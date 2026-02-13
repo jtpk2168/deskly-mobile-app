@@ -7,45 +7,43 @@ import { supabase } from "../../lib/supabase";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 
-export default function LoginScreen() {
+export default function SignupScreen() {
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = async () => {
-        if (!email || !password) {
+    const handleSignup = async () => {
+        if (!email || !password || !fullName) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
         setLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: {
+                        full_name: fullName,
+                        role: 'customer' // Explicitly set role
+                    },
+                },
             });
 
             if (error) throw error;
-            router.replace('/(tabs)');
+
+            if (data.session) {
+                router.replace('/(tabs)');
+            } else {
+                Alert.alert('Success', 'Please check your email for verification!');
+                router.back(); // Go back to login
+            }
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+            Alert.alert('Signup Failed', error.message);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleForgotPassword = async () => {
-        if (!email) {
-            Alert.alert('Error', 'Please enter your email address to reset password');
-            return;
-        }
-
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) throw error;
-            Alert.alert('Success', 'Password reset instructions sent to your email');
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
         }
     };
 
@@ -59,20 +57,29 @@ export default function LoginScreen() {
                             <View className="mb-10 items-center">
                                 <Text className="text-4xl font-bold uppercase tracking-widest text-primary">Deskly</Text>
                                 <Text className="mt-2 text-sm font-medium uppercase tracking-[0.2em] text-primary-dark">
-                                    Furnishing Your Future Success
+                                    Join The Revolution
                                 </Text>
                             </View>
 
                             <Text className="mb-4 text-center text-3xl font-bold leading-tight text-gray-900">
-                                Rent Office Furniture.{"\n"}
-                                <Text className="text-primary">Zero Upfront Cost.</Text>
+                                Create Account.{"\n"}
+                                <Text className="text-primary">Start Renting.</Text>
                             </Text>
                             <Text className="max-w-sm text-center text-base leading-relaxed text-slate-500">
-                                Empower your workspace with our flexible subscription model. Premium furniture, managed for you.
+                                Sign up to access premium furniture with our flexible subscription model.
                             </Text>
                         </View>
 
                         <View className="mt-8">
+                            <Input
+                                label="Full Name"
+                                placeholder="John Doe"
+                                icon="person-outline"
+                                value={fullName}
+                                onChangeText={setFullName}
+                                className="mb-4"
+                            />
+
                             <Input
                                 label="Work Email"
                                 placeholder="name@company.com"
@@ -84,13 +91,8 @@ export default function LoginScreen() {
                             />
 
                             <View className="mt-4">
-                                <View className="mb-1 flex-row items-center justify-between px-1">
-                                    <Text className="text-sm font-medium text-slate-500">Password</Text>
-                                    <TouchableOpacity onPress={handleForgotPassword}>
-                                        <Text className="text-sm font-medium text-primary">Forgot?</Text>
-                                    </TouchableOpacity>
-                                </View>
                                 <Input
+                                    label="Password"
                                     placeholder="••••••••"
                                     icon="lock-outline"
                                     secureTextEntry
@@ -100,9 +102,9 @@ export default function LoginScreen() {
                             </View>
 
                             <Button
-                                label="Log in"
+                                label="Create Account"
                                 className="mt-6"
-                                onPress={handleLogin}
+                                onPress={handleSignup}
                                 loading={loading}
                             />
 
@@ -116,9 +118,9 @@ export default function LoginScreen() {
                             </View>
 
                             <View className="flex-row justify-center items-center mt-6 mb-4">
-                                <Text className="text-sm text-slate-500">New to Deskly? </Text>
-                                <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-                                    <Text className="text-sm font-semibold text-primary">Create account</Text>
+                                <Text className="text-sm text-slate-500">Already have an account? </Text>
+                                <TouchableOpacity onPress={() => router.back()}>
+                                    <Text className="text-sm font-semibold text-primary">Sign In</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
