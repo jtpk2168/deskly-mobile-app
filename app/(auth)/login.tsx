@@ -1,7 +1,6 @@
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Input } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
@@ -46,7 +45,7 @@ export default function LoginScreen() {
                                         <Text className="text-sm font-medium text-primary">Forgot?</Text>
                                     </TouchableOpacity>
                                 </View>
-                                <Input label="" placeholder="••••••••" icon="lock-outline" secureTextEntry />
+                                <Input placeholder="••••••••" icon="lock-outline" secureTextEntry />
                             </View>
 
                             <Button label="Log in" className="mt-6" onPress={() => router.replace("/(onboarding)/personal-info")} />
@@ -63,13 +62,6 @@ export default function LoginScreen() {
                             <Text className="text-center text-sm text-slate-500">
                                 New to Deskly?
                                 <Text className="font-semibold text-primary"> Create account</Text>
-                            </Text>
-                        </View>
-
-                        <View className="mt-8 flex-row items-center justify-center rounded-full bg-gray-50 px-4 py-3">
-                            <MaterialIcons name="verified-user" size={18} color="#16A34A" />
-                            <Text className="ml-2 text-sm font-medium uppercase tracking-wider text-slate-500">
-                                Enterprise Grade Security & Encryption
                             </Text>
                         </View>
                     </View>
