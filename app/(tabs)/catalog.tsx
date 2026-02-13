@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Image, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { PRODUCTS } from "../../constants/mockData";
+import { useProducts } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
@@ -14,13 +14,7 @@ export default function CatalogScreen() {
     const [query, setQuery] = useState("");
     const { contentPaddingBottom } = useTabBarSpacing();
 
-    const filteredProducts = useMemo(() => {
-        return PRODUCTS.filter((product) => {
-            const byCategory = activeCategory === "All" || product.category === activeCategory;
-            const byQuery = product.name.toLowerCase().includes(query.toLowerCase());
-            return byCategory && byQuery;
-        });
-    }, [activeCategory, query]);
+    const { data: products, loading, error } = useProducts(activeCategory, query);
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50" edges={["top", "left", "right"]}>
@@ -62,40 +56,58 @@ export default function CatalogScreen() {
                     </View>
                 </ScrollView>
 
-                <View className="flex-row flex-wrap justify-between px-5 pb-2">
-                    {filteredProducts.map((product) => (
-                        <TouchableOpacity
-                            key={product.id}
-                            className="mb-4 w-[48%] rounded-2xl border border-gray-50 bg-white p-4"
-                            onPress={() => router.push(`/product/${product.id}`)}
-                            activeOpacity={0.92}
-                        >
-                            <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
-                                <View className="absolute left-2 top-2 z-10 rounded-md border border-gray-100 bg-white/90 px-2 py-0.5">
-                                    <Text className="text-sm font-bold uppercase tracking-wide text-primary">
-                                        {product.minMonths} Mo. Min
-                                    </Text>
+                {loading ? (
+                    <View className="flex-1 items-center justify-center py-20">
+                        <ActivityIndicator size="large" color="#6B8599" />
+                        <Text className="mt-3 text-sm text-slate-400">Loading furniture...</Text>
+                    </View>
+                ) : error ? (
+                    <View className="flex-1 items-center justify-center py-20 px-6">
+                        <MaterialIcons name="wifi-off" size={48} color="#CBD5E1" />
+                        <Text className="mt-3 text-base font-semibold text-gray-700">Connection Error</Text>
+                        <Text className="mt-1 text-sm text-slate-400 text-center">{error}</Text>
+                    </View>
+                ) : !products || products.length === 0 ? (
+                    <View className="flex-1 items-center justify-center py-20 px-6">
+                        <MaterialIcons name="inventory-2" size={48} color="#CBD5E1" />
+                        <Text className="mt-3 text-base font-semibold text-gray-700">No Furniture Found</Text>
+                        <Text className="mt-1 text-sm text-slate-400 text-center">
+                            {query ? `No results for "${query}"` : "Check back soon for new arrivals."}
+                        </Text>
+                    </View>
+                ) : (
+                    <View className="flex-row flex-wrap justify-between px-5 pb-2">
+                        {products.map((product) => (
+                            <TouchableOpacity
+                                key={product.id}
+                                className="mb-4 w-[48%] rounded-2xl border border-gray-50 bg-white p-4"
+                                onPress={() => router.push(`/product/${product.id}`)}
+                                activeOpacity={0.92}
+                            >
+                                <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
+                                    {product.image_url && (
+                                        <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
+                                    )}
                                 </View>
-                                <Image source={{ uri: product.image }} className="h-full w-full" resizeMode="cover" />
-                            </View>
 
-                            <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                                {product.name}
-                            </Text>
-                            <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
+                                <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                                    {product.name}
+                                </Text>
+                                <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
 
-                            <View className="mt-3 flex-row items-end justify-between">
-                                <View className="flex-row items-baseline">
-                                    <Text className="text-lg font-bold text-primary">${product.price}</Text>
-                                    <Text className="text-sm text-slate-400">/mo</Text>
+                                <View className="mt-3 flex-row items-end justify-between">
+                                    <View className="flex-row items-baseline">
+                                        <Text className="text-lg font-bold text-primary">RM {product.monthly_price}</Text>
+                                        <Text className="text-sm text-slate-400">/mo</Text>
+                                    </View>
+                                    <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-full bg-primary">
+                                        <MaterialIcons name="add" size={18} color="#FFFFFF" />
+                                    </TouchableOpacity>
                                 </View>
-                                <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-full bg-primary">
-                                    <MaterialIcons name="add" size={18} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
             </ScrollView>
         </SafeAreaView>
     );

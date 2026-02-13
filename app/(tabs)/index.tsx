@@ -9,58 +9,40 @@ import {
     View,
     ViewToken,
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MockProduct, PRODUCTS } from "../../constants/mockData";
+import { useProducts, Product } from "../../hooks/useApi";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 function FeedItem({
     item,
-    isActive,
     tabBarHeight,
     topInset,
     index,
     total,
 }: {
-    item: MockProduct;
-    isActive: boolean;
+    item: Product;
     tabBarHeight: number;
     topInset: number;
     index: number;
     total: number;
 }) {
-    const [isLoading, setIsLoading] = useState(true);
-
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
-            {/* Poster image (shows while video loads) */}
-            <Image
-                source={{ uri: item.image }}
-                className="absolute inset-0 h-full w-full"
-                resizeMode="cover"
-            />
-
-            {/* Video player */}
-            <Video
-                source={{ uri: item.video }}
-                style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay={isActive}
-                isLooping
-                isMuted
-                onLoadStart={() => setIsLoading(true)}
-                onLoad={() => setIsLoading(false)}
-            />
-
-            {/* Loading spinner */}
-            {isLoading && isActive && (
-                <View className="absolute inset-0 items-center justify-center">
-                    <ActivityIndicator size="large" color="rgba(255,255,255,0.6)" />
+            {/* Product image as full-screen background */}
+            {item.image_url ? (
+                <Image
+                    source={{ uri: item.image_url }}
+                    className="absolute inset-0 h-full w-full"
+                    resizeMode="cover"
+                />
+            ) : (
+                <View className="absolute inset-0 h-full w-full items-center justify-center bg-gray-900">
+                    <MaterialIcons name="image" size={64} color="#475569" />
                 </View>
             )}
 
@@ -77,17 +59,19 @@ function FeedItem({
                 style={{ paddingBottom: tabBarHeight + 24 }}
             >
                 {/* Category pill */}
-                <View className="mb-4 flex-row">
-                    <View className="rounded-full bg-white/20 px-3.5 py-1.5">
-                        <Text className="text-sm font-semibold text-white">
-                            {item.category}
-                        </Text>
+                {item.category && (
+                    <View className="mb-4 flex-row">
+                        <View className="rounded-full bg-white/20 px-3.5 py-1.5">
+                            <Text className="text-sm font-semibold text-white">
+                                {item.category}
+                            </Text>
+                        </View>
                     </View>
-                </View>
+                )}
 
-                {/* Tagline — the big attention-grabbing text */}
+                {/* Tagline */}
                 <Text className="mb-3 text-3xl font-bold leading-tight text-white">
-                    {item.tagline}
+                    Just RM {item.monthly_price}/mo! 🔥
                 </Text>
 
                 {/* Product name */}
@@ -95,22 +79,22 @@ function FeedItem({
                     {item.name}
                 </Text>
 
-                {/* Video caption */}
-                <Text className="mb-6 text-base leading-relaxed text-white/70" numberOfLines={2}>
-                    {item.videoCaption}
-                </Text>
+                {/* Description as caption */}
+                {item.description && (
+                    <Text className="mb-6 text-base leading-relaxed text-white/70" numberOfLines={2}>
+                        {item.description}
+                    </Text>
+                )}
 
                 {/* Price badge + CTA row */}
                 <View className="flex-row items-center gap-3">
-                    {/* Price badge */}
                     <View className="rounded-xl bg-white/15 px-4 py-3">
                         <Text className="text-lg font-bold text-white">
-                            RM {item.price}
+                            RM {item.monthly_price}
                             <Text className="text-sm font-medium text-white/70">/mo</Text>
                         </Text>
                     </View>
 
-                    {/* CTA Button */}
                     <TouchableOpacity
                         className="flex-1 flex-row items-center justify-center rounded-xl bg-primary py-4"
                         onPress={() => router.push(`/product/${item.id}`)}
@@ -129,7 +113,7 @@ function FeedItem({
                 </View>
             </View>
 
-            {/* Item counter — top right */}
+            {/* Item counter */}
             <View
                 className="absolute right-5 flex-row items-center rounded-full bg-black/40 px-3 py-1.5"
                 style={{ top: topInset + 12 }}
@@ -148,6 +132,8 @@ export default function HomeFeedScreen() {
     const { tabBarHeight } = useTabBarSpacing();
     const [activeIndex, setActiveIndex] = useState(0);
 
+    const { data: products, loading, error } = useProducts();
+
     const onViewableItemsChanged = useRef(
         ({ viewableItems }: { viewableItems: ViewToken[] }) => {
             if (viewableItems.length > 0 && viewableItems[0].index != null) {
@@ -159,23 +145,43 @@ export default function HomeFeedScreen() {
     const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
 
     const renderItem = useCallback(
-        ({ item, index }: { item: MockProduct; index: number }) => (
+        ({ item, index }: { item: Product; index: number }) => (
             <FeedItem
                 item={item}
-                isActive={index === activeIndex}
                 tabBarHeight={tabBarHeight}
                 topInset={insets.top}
                 index={index}
-                total={PRODUCTS.length}
+                total={products?.length ?? 0}
             />
         ),
-        [tabBarHeight, insets.top, activeIndex]
+        [tabBarHeight, insets.top, products?.length]
     );
+
+    if (loading) {
+        return (
+            <View className="flex-1 items-center justify-center bg-black">
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text className="mt-3 text-sm text-white/60">Loading feed...</Text>
+            </View>
+        );
+    }
+
+    if (error || !products || products.length === 0) {
+        return (
+            <View className="flex-1 items-center justify-center bg-black px-6">
+                <MaterialIcons name="explore" size={64} color="#475569" />
+                <Text className="mt-4 text-xl font-bold text-white">No Content Yet</Text>
+                <Text className="mt-2 text-center text-base text-white/50">
+                    {error ? error : "New furniture drops coming soon. Stay tuned!"}
+                </Text>
+            </View>
+        );
+    }
 
     return (
         <View className="flex-1 bg-black">
             <FlatList
-                data={PRODUCTS}
+                data={products}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.id}
                 pagingEnabled

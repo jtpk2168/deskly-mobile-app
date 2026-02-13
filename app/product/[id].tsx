@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { getProductById, PRODUCTS } from "../../constants/mockData";
+import { useProduct } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 
 const DURATION_OPTIONS = [6, 12, 24];
@@ -11,7 +11,28 @@ export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const [selectedDuration, setSelectedDuration] = useState(12);
 
-    const product = useMemo(() => getProductById(id) ?? PRODUCTS[0], [id]);
+    const { data: product, loading, error } = useProduct(id);
+
+    if (loading) {
+        return (
+            <View className="flex-1 items-center justify-center bg-white">
+                <ActivityIndicator size="large" color="#6B8599" />
+                <Text className="mt-3 text-sm text-slate-400">Loading product...</Text>
+            </View>
+        );
+    }
+
+    if (error || !product) {
+        return (
+            <View className="flex-1 items-center justify-center bg-white px-6">
+                <MaterialIcons name="error-outline" size={48} color="#CBD5E1" />
+                <Text className="mt-3 text-base font-semibold text-gray-700">Product Not Found</Text>
+                <TouchableOpacity className="mt-4 rounded-xl bg-primary px-6 py-3" onPress={() => router.back()}>
+                    <Text className="text-sm font-semibold text-white">Go Back</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View className="flex-1 bg-white">
@@ -33,7 +54,13 @@ export default function ProductDetailsScreen() {
 
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
                 <View className="relative h-[45vh] min-h-[360px] overflow-hidden bg-gray-100">
-                    <Image source={{ uri: product.image }} className="h-full w-full" resizeMode="cover" />
+                    {product.image_url ? (
+                        <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
+                    ) : (
+                        <View className="h-full w-full items-center justify-center">
+                            <MaterialIcons name="image" size={64} color="#CBD5E1" />
+                        </View>
+                    )}
                     <View className="absolute bottom-0 left-0 h-24 w-full bg-white/70" />
                 </View>
 
@@ -45,24 +72,21 @@ export default function ProductDetailsScreen() {
                                 <Text className="text-3xl font-bold leading-tight text-gray-900">{product.name}</Text>
                             </View>
                             <View className="items-end">
-                                <Text className="text-2xl font-bold text-primary">${product.price}</Text>
+                                <Text className="text-2xl font-bold text-primary">RM {product.monthly_price}</Text>
                                 <Text className="text-sm text-slate-400">/mo</Text>
                             </View>
                         </View>
 
-                        <View className="mt-1 flex-row items-center">
-                            {Array.from({ length: 5 }).map((_, index) => (
-                                <MaterialIcons
-                                    key={index}
-                                    name={index < Math.floor(product.rating) ? "star" : "star-border"}
-                                    size={16}
-                                    color="#FACC15"
-                                />
-                            ))}
-                            <Text className="ml-2 text-sm font-medium text-slate-400">
-                                {product.rating} ({product.reviews} reviews)
-                            </Text>
-                        </View>
+                        {product.category && (
+                            <View className="mt-1 flex-row items-center">
+                                <View className="rounded-full bg-primary/10 px-3 py-1">
+                                    <Text className="text-sm font-medium text-primary">{product.category}</Text>
+                                </View>
+                                <Text className="ml-2 text-sm text-slate-400">
+                                    {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     <View className="mb-8">
@@ -100,10 +124,12 @@ export default function ProductDetailsScreen() {
                         </View>
                     </View>
 
-                    <View className="mb-8">
-                        <Text className="mb-3 text-lg font-bold text-gray-900">Overview</Text>
-                        <Text className="text-base leading-relaxed text-slate-500">{product.description}</Text>
-                    </View>
+                    {product.description && (
+                        <View className="mb-8">
+                            <Text className="mb-3 text-lg font-bold text-gray-900">Overview</Text>
+                            <Text className="text-base leading-relaxed text-slate-500">{product.description}</Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
@@ -111,7 +137,7 @@ export default function ProductDetailsScreen() {
                 <View className="flex-row items-center gap-4">
                     <View>
                         <Text className="text-sm font-medium uppercase text-slate-400">Monthly</Text>
-                        <Text className="text-2xl font-bold text-gray-900">${product.price}.00</Text>
+                        <Text className="text-2xl font-bold text-gray-900">RM {product.monthly_price}</Text>
                     </View>
                     <TouchableOpacity
                         className="flex-1 flex-row items-center justify-center rounded-xl bg-primary py-4"
