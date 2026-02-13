@@ -5,6 +5,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } f
 import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+import { AuthProvider } from '../contexts/AuthContext';
 
 configureReanimatedLogger({
     level: ReanimatedLogLevel.warn,
@@ -32,14 +33,16 @@ export default function RootLayout() {
     }
 
     return (
-        <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(onboarding)/personal-info" options={{ headerShown: false }} />
-            <Stack.Screen name="(onboarding)/company-details" options={{ headerShown: false }} />
-            <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
-            <Stack.Screen name="checkout/delivery" options={{ headerShown: false }} />
-            <Stack.Screen name="checkout/confirmation" options={{ headerShown: false }} />
-        </Stack>
+        <AuthProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(onboarding)/personal-info" options={{ headerShown: false }} />
+                <Stack.Screen name="(onboarding)/company-details" options={{ headerShown: false }} />
+                <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+                <Stack.Screen name="checkout/delivery" options={{ headerShown: false }} />
+                <Stack.Screen name="checkout/confirmation" options={{ headerShown: false }} />
+            </Stack>
+        </AuthProvider>
     );
 }
