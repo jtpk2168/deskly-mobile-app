@@ -88,6 +88,12 @@ export default function TabLayout() {
                     ),
                 }}
             />
+            <Tabs.Screen name="my-rentals" options={{ href: null }} />
+            <Tabs.Screen name="index 2" options={{ href: null }} />
+            <Tabs.Screen name="catalog 2" options={{ href: null }} />
+            <Tabs.Screen name="rentals 2" options={{ href: null }} />
+            <Tabs.Screen name="profile 2" options={{ href: null }} />
+            <Tabs.Screen name="settings 2" options={{ href: null }} />
         </Tabs>
     );
 }

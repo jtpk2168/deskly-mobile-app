@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -33,6 +33,15 @@ const DateCard = ({ day, date, month, isSelected, onPress }: DateCardProps) => (
     </TouchableOpacity>
 );
 
+const styles = StyleSheet.create({
+    inputText: {
+        fontSize: 16,
+        lineHeight: 20,
+        paddingVertical: 0,
+        includeFontPadding: false,
+    },
+});
+
 export default function DeliveryCheckoutScreen() {
     const [selectedDate, setSelectedDate] = useState(0);
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -66,6 +75,7 @@ export default function DeliveryCheckoutScreen() {
                                 className="w-full h-12 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                 placeholder="Acme Corp."
                                 placeholderTextColor="#9CA3AF"
+                                style={styles.inputText}
                             />
                         </View>
                         <View>
@@ -74,6 +84,7 @@ export default function DeliveryCheckoutScreen() {
                                 className="w-full h-12 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                 placeholder="123 Innovation Blvd, Suite 400"
                                 placeholderTextColor="#9CA3AF"
+                                style={styles.inputText}
                             />
                         </View>
                         <View className="flex-row space-x-4">
@@ -83,6 +94,7 @@ export default function DeliveryCheckoutScreen() {
                                     className="w-full h-12 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                     placeholder="San Francisco"
                                     placeholderTextColor="#9CA3AF"
+                                    style={styles.inputText}
                                 />
                             </View>
                             <View className="flex-1">
@@ -91,6 +103,7 @@ export default function DeliveryCheckoutScreen() {
                                     className="w-full h-12 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                     placeholder="94105"
                                     placeholderTextColor="#9CA3AF"
+                                    style={styles.inputText}
                                 />
                             </View>
                         </View>
@@ -109,6 +122,7 @@ export default function DeliveryCheckoutScreen() {
                                 className="w-full h-12 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                 placeholder="Jane Doe"
                                 placeholderTextColor="#9CA3AF"
+                                style={styles.inputText}
                             />
                         </View>
                         <View>
@@ -118,6 +132,7 @@ export default function DeliveryCheckoutScreen() {
                                     className="w-full h-12 pl-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-base text-gray-900 dark:text-white"
                                     placeholder="+1 (555) 987-6543"
                                     placeholderTextColor="#9CA3AF"
+                                    style={styles.inputText}
                                 />
                             </View>
                         </View>

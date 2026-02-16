@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -17,6 +17,15 @@ function SelectField({ label, placeholder }: { label: string; placeholder: strin
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    multilineInput: {
+        fontSize: 16,
+        lineHeight: 22,
+        paddingVertical: 0,
+        includeFontPadding: false,
+    },
+});
 
 export default function CompanyDetailsScreen() {
     return (
@@ -51,11 +60,12 @@ export default function CompanyDetailsScreen() {
                             <Text className="ml-1 text-sm font-medium text-slate-500">HQ Office Address</Text>
                             <View className="mt-2 rounded-xl border border-gray-200 bg-gray-50">
                                 <TextInput
-                                    className="min-h-[120px] px-4 py-4 text-base text-gray-900"
+                                    className="min-h-[120px] px-4 pb-4 pt-3 text-gray-900"
                                     placeholder="Street address, City, State, Zip"
                                     placeholderTextColor="#94A3B8"
                                     multiline
                                     textAlignVertical="top"
+                                    style={styles.multilineInput}
                                 />
                             </View>
                         </View>

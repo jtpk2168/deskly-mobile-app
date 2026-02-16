@@ -1,4 +1,4 @@
-import { TextInput, View, Text, TextInputProps } from "react-native";
+import { StyleSheet, TextInput, TextInputProps, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
 interface InputProps extends TextInputProps {
@@ -7,7 +7,16 @@ interface InputProps extends TextInputProps {
     error?: string;
 }
 
-export function Input({ label, icon, error, className, ...props }: InputProps) {
+const styles = StyleSheet.create({
+    inputText: {
+        fontSize: 16,
+        lineHeight: 20,
+        paddingVertical: 0,
+        includeFontPadding: false,
+    },
+});
+
+export function Input({ label, icon, error, className, style, ...props }: InputProps) {
     return (
         <View className={className}>
             {label ? <Text className="mb-2 ml-1 text-base font-medium text-slate-600">{label}</Text> : null}
@@ -18,8 +27,9 @@ export function Input({ label, icon, error, className, ...props }: InputProps) {
                     </View>
                 )}
                 <TextInput
-                    className={`block w-full ${icon ? "pl-11" : "pl-4"} rounded-2xl border border-gray-200 bg-gray-50 py-4 pr-4 text-base text-slate-700 placeholder-gray-400`}
+                    className={`h-14 w-full ${icon ? "pl-11" : "pl-4"} rounded-2xl border border-gray-200 bg-gray-50 pr-4 text-slate-700 placeholder-gray-400`}
                     placeholderTextColor="#94A3B8"
+                    style={[styles.inputText, style]}
                     {...props}
                 />
             </View>

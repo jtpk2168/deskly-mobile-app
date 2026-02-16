@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -8,6 +8,15 @@ import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
 const categories = ["All", "Desks", "Chairs", "Storage", "Meeting"];
+
+const styles = StyleSheet.create({
+    inputText: {
+        fontSize: 16,
+        lineHeight: 20,
+        paddingVertical: 0,
+        includeFontPadding: false,
+    },
+});
 
 export default function CatalogScreen() {
     const [activeCategory, setActiveCategory] = useState("All");
@@ -26,11 +35,12 @@ export default function CatalogScreen() {
                         <MaterialIcons name="search" size={22} color="#94A3B8" />
                     </View>
                     <TextInput
-                        className="rounded-xl border border-gray-100 bg-gray-50 py-4 pl-11 pr-4 text-base text-gray-900"
+                        className="h-14 rounded-xl border border-gray-100 bg-gray-50 pl-11 pr-4 text-gray-900"
                         placeholder="Search furniture..."
                         placeholderTextColor="#94A3B8"
                         value={query}
                         onChangeText={setQuery}
+                        style={styles.inputText}
                     />
                 </View>
             </View>
