@@ -10,6 +10,11 @@ export type Product = {
     description: string | null;
     category: string | null;
     monthly_price: number;
+    pricing_mode: "fixed" | "tiered";
+    pricing_tiers: {
+        min_months: number;
+        monthly_price: number;
+    }[];
     image_url: string | null;
     video_url: string | null;
     stock_quantity: number;

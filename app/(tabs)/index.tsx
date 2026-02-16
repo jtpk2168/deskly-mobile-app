@@ -19,6 +19,26 @@ import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+function toNumeric(value: unknown) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPrice(value: number) {
+    return toNumeric(value).toFixed(2);
+}
+
+function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
+    if (!Array.isArray(input)) return [];
+    return input
+        .map((tier) => ({
+            min_months: Number(tier.min_months),
+            monthly_price: Number(tier.monthly_price),
+        }))
+        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
+        .sort((a, b) => a.min_months - b.min_months);
+}
+
 function FeedItem({
     item,
     tabBarHeight,
@@ -34,6 +54,17 @@ function FeedItem({
     total: number;
     isActive: boolean;
 }) {
+    const baseMonthlyPrice = toNumeric(item.monthly_price);
+    const pricingTiers = normalizePricingTiers(item.pricing_tiers);
+    const lowestTieredPrice =
+        pricingTiers.length > 0
+            ? pricingTiers.reduce((minPrice, tier) => Math.min(minPrice, tier.monthly_price), baseMonthlyPrice)
+            : baseMonthlyPrice;
+    const hasTieredDiscount =
+        item.pricing_mode === "tiered" &&
+        lowestTieredPrice < baseMonthlyPrice;
+    const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
+
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
             {item.video_url ? (
@@ -82,7 +113,7 @@ function FeedItem({
 
                 {/* Tagline */}
                 <Text className="mb-3 text-3xl font-bold leading-tight text-white">
-                    Just RM {item.monthly_price}/mo! 🔥
+                    {hasTieredDiscount ? `From RM ${formatPrice(listingMonthlyPrice)}/mo! 🔥` : `Just RM ${formatPrice(listingMonthlyPrice)}/mo! 🔥`}
                 </Text>
 
                 {/* Product name */}
@@ -101,7 +132,7 @@ function FeedItem({
                 <View className="flex-row items-center gap-3">
                     <View className="rounded-xl bg-white/15 px-4 py-3">
                         <Text className="text-lg font-bold text-white">
-                            RM {item.monthly_price}
+                            {hasTieredDiscount ? `From RM ${formatPrice(listingMonthlyPrice)}` : `RM ${formatPrice(listingMonthlyPrice)}`}
                             <Text className="text-sm font-medium text-white/70">/mo</Text>
                         </Text>
                     </View>

@@ -7,6 +7,26 @@ import { AppTopBar } from "../../components/ui/AppTopBar";
 
 const DURATION_OPTIONS = [6, 12, 24];
 
+function toNumeric(value: unknown) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPrice(value: number) {
+    return toNumeric(value).toFixed(2);
+}
+
+function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
+    if (!Array.isArray(input)) return [];
+    return input
+        .map((tier) => ({
+            min_months: Number(tier.min_months),
+            monthly_price: Number(tier.monthly_price),
+        }))
+        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
+        .sort((a, b) => a.min_months - b.min_months);
+}
+
 export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const [selectedDuration, setSelectedDuration] = useState(12);
@@ -33,6 +53,18 @@ export default function ProductDetailsScreen() {
             </View>
         );
     }
+
+    const baseMonthlyPrice = toNumeric(product.monthly_price);
+    const pricingTiers = normalizePricingTiers(product.pricing_tiers);
+    const hasTieredPricing =
+        product.pricing_mode === "tiered" &&
+        pricingTiers.length > 0;
+    const applicableTier = hasTieredPricing
+        ? [...pricingTiers].reverse().find((tier) => selectedDuration >= tier.min_months) ?? null
+        : null;
+    const effectiveMonthlyPrice = applicableTier ? applicableTier.monthly_price : baseMonthlyPrice;
+    const totalPrice = effectiveMonthlyPrice * selectedDuration;
+    const hasDiscount = effectiveMonthlyPrice < baseMonthlyPrice;
 
     return (
         <View className="flex-1 bg-white">
@@ -72,8 +104,18 @@ export default function ProductDetailsScreen() {
                                 <Text className="text-3xl font-bold leading-tight text-gray-900">{product.name}</Text>
                             </View>
                             <View className="items-end">
-                                <Text className="text-2xl font-bold text-primary">RM {product.monthly_price}</Text>
+                                <Text className="text-2xl font-bold text-primary">RM {formatPrice(effectiveMonthlyPrice)}</Text>
                                 <Text className="text-sm text-slate-400">/mo</Text>
+                                {hasTieredPricing && (
+                                    <Text className="mt-1 text-right text-xs text-slate-500">
+                                        {pricingTiers.map((tier) => `${tier.min_months}+m RM ${formatPrice(tier.monthly_price)}`).join(" | ")}
+                                    </Text>
+                                )}
+                                {hasDiscount && (
+                                    <Text className="mt-1 text-xs text-slate-400 line-through">
+                                        Base RM {formatPrice(baseMonthlyPrice)}/mo
+                                    </Text>
+                                )}
                             </View>
                         </View>
 
@@ -110,6 +152,11 @@ export default function ProductDetailsScreen() {
                         <Text className="mt-3 text-center text-sm text-slate-400">
                             Includes maintenance and professional installation.
                         </Text>
+                        {hasTieredPricing && (
+                            <Text className="mt-1 text-center text-sm text-primary">
+                                Tiered pricing auto-applies based on selected rental duration.
+                            </Text>
+                        )}
                     </View>
 
                     <View className="mb-8 flex-row items-center rounded-xl border border-primary/20 bg-primary/10 p-4">
@@ -137,7 +184,11 @@ export default function ProductDetailsScreen() {
                 <View className="flex-row items-center gap-4">
                     <View>
                         <Text className="text-sm font-medium uppercase text-slate-400">Monthly</Text>
-                        <Text className="text-2xl font-bold text-gray-900">RM {product.monthly_price}</Text>
+                        <Text className="text-2xl font-bold text-gray-900">RM {formatPrice(effectiveMonthlyPrice)}</Text>
+                        <Text className="mt-2 text-sm font-medium uppercase text-slate-400">
+                            Total ({selectedDuration} months)
+                        </Text>
+                        <Text className="text-xl font-bold text-gray-900">RM {formatPrice(totalPrice)}</Text>
                     </View>
                     <TouchableOpacity
                         className="flex-1 flex-row items-center justify-center rounded-xl bg-primary py-4"

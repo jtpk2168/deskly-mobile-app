@@ -18,6 +18,26 @@ const styles = StyleSheet.create({
     },
 });
 
+function toNumeric(value: unknown) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPrice(value: number) {
+    return toNumeric(value).toFixed(2);
+}
+
+function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
+    if (!Array.isArray(input)) return [];
+    return input
+        .map((tier) => ({
+            min_months: Number(tier.min_months),
+            monthly_price: Number(tier.monthly_price),
+        }))
+        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
+        .sort((a, b) => a.min_months - b.min_months);
+}
+
 export default function CatalogScreen() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [query, setQuery] = useState("");
@@ -87,35 +107,50 @@ export default function CatalogScreen() {
                     </View>
                 ) : (
                     <View className="flex-row flex-wrap justify-between px-5 pb-2">
-                        {products.map((product) => (
-                            <TouchableOpacity
-                                key={product.id}
-                                className="mb-4 w-[48%] rounded-2xl border border-gray-50 bg-white p-4"
-                                onPress={() => router.push(`/product/${product.id}`)}
-                                activeOpacity={0.92}
-                            >
-                                <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
-                                    {product.image_url && (
-                                        <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
-                                    )}
-                                </View>
+                        {products.map((product) => {
+                            const baseMonthlyPrice = toNumeric(product.monthly_price);
+                            const pricingTiers = normalizePricingTiers(product.pricing_tiers);
+                            const lowestTieredPrice =
+                                pricingTiers.length > 0
+                                    ? pricingTiers.reduce((minPrice, tier) => Math.min(minPrice, tier.monthly_price), baseMonthlyPrice)
+                                    : baseMonthlyPrice;
+                            const hasTieredDiscount =
+                                product.pricing_mode === "tiered" &&
+                                lowestTieredPrice < baseMonthlyPrice;
+                            const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
 
-                                <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                                    {product.name}
-                                </Text>
-                                <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
-
-                                <View className="mt-3 flex-row items-end justify-between">
-                                    <View className="flex-row items-baseline">
-                                        <Text className="text-lg font-bold text-primary">RM {product.monthly_price}</Text>
-                                        <Text className="text-sm text-slate-400">/mo</Text>
+                            return (
+                                <TouchableOpacity
+                                    key={product.id}
+                                    className="mb-4 w-[48%] rounded-2xl border border-gray-50 bg-white p-4"
+                                    onPress={() => router.push(`/product/${product.id}`)}
+                                    activeOpacity={0.92}
+                                >
+                                    <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
+                                        {product.image_url && (
+                                            <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
+                                        )}
                                     </View>
-                                    <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-full bg-primary">
-                                        <MaterialIcons name="add" size={18} color="#FFFFFF" />
-                                    </TouchableOpacity>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
+
+                                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                                        {product.name}
+                                    </Text>
+                                    <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
+
+                                    <View className="mt-3 flex-row items-end justify-between">
+                                        <View className="flex-row items-baseline">
+                                            <Text className="text-lg font-bold text-primary">
+                                                {hasTieredDiscount ? `From RM ${formatPrice(listingMonthlyPrice)}` : `RM ${formatPrice(listingMonthlyPrice)}`}
+                                            </Text>
+                                            <Text className="text-sm text-slate-400">/mo</Text>
+                                        </View>
+                                        <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-full bg-primary">
+                                            <MaterialIcons name="add" size={18} color="#FFFFFF" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 )}
             </ScrollView>
