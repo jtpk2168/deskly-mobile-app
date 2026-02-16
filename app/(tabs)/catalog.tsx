@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -7,7 +7,7 @@ import { useProducts } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
-const categories = ["All", "Desks", "Chairs", "Storage", "Meeting"];
+const categories = ["All", "Desks", "Chairs", "Storage", "Meeting", "Accessories"];
 
 const styles = StyleSheet.create({
     inputText: {

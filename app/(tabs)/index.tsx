@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ResizeMode, Video } from "expo-av";
 import { useProducts, Product } from "../../hooks/useApi";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
@@ -24,17 +25,27 @@ function FeedItem({
     topInset,
     index,
     total,
+    isActive,
 }: {
     item: Product;
     tabBarHeight: number;
     topInset: number;
     index: number;
     total: number;
+    isActive: boolean;
 }) {
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
-            {/* Product image as full-screen background */}
-            {item.image_url ? (
+            {item.video_url ? (
+                <Video
+                    source={{ uri: item.video_url }}
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
+                    shouldPlay={isActive}
+                    isLooping
+                    isMuted
+                    resizeMode={ResizeMode.COVER}
+                />
+            ) : item.image_url ? (
                 <Image
                     source={{ uri: item.image_url }}
                     className="absolute inset-0 h-full w-full"
@@ -152,9 +163,10 @@ export default function HomeFeedScreen() {
                 topInset={insets.top}
                 index={index}
                 total={products?.length ?? 0}
+                isActive={index === activeIndex}
             />
         ),
-        [tabBarHeight, insets.top, products?.length]
+        [tabBarHeight, insets.top, products?.length, activeIndex]
     );
 
     if (loading) {

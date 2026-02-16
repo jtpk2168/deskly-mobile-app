@@ -5,14 +5,19 @@ import { fetchApi } from '../lib/api';
 
 export type Product = {
     id: string;
+    product_code: string;
     name: string;
     description: string | null;
     category: string | null;
     monthly_price: number;
     image_url: string | null;
+    video_url: string | null;
     stock_quantity: number;
+    status: 'draft' | 'active' | 'inactive';
     is_active: boolean;
     created_at: string;
+    updated_at: string;
+    published_at: string | null;
 };
 
 export type Bundle = {
@@ -22,21 +27,6 @@ export type Bundle = {
     monthly_price: number;
     image_url: string | null;
     is_active: boolean;
-    created_at: string;
-};
-
-export type Reel = {
-    id: string;
-    title: string;
-    description: string | null;
-    video_url: string;
-    thumbnail_url: string | null;
-    duration_seconds: number | null;
-    associated_bundle_id: string | null;
-    product_ids: string[];
-    is_featured: boolean;
-    is_active: boolean;
-    views_count: number;
     created_at: string;
 };
 
@@ -115,12 +105,6 @@ export function useProducts(category?: string, search?: string) {
 
 export function useProduct(id?: string) {
     return useApiQuery<Product>(`/api/products/${id}`, !!id);
-}
-
-export function useReels(page = 1, limit = 10, featured?: boolean) {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (featured) params.set('featured', 'true');
-    return useApiQuery<Reel[]>(`/api/reels?${params.toString()}`);
 }
 
 export function useProfile(userId?: string) {
