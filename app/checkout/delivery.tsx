@@ -2,9 +2,9 @@ import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput 
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppTopBar } from "../../components/ui/AppTopBar";
-import { createSubscription } from "../../hooks/useApi";
+import { createSubscription, useProfile, type Profile } from "../../hooks/useApi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
 
@@ -54,9 +54,58 @@ function formatDeliveryOptionLabel(option: { day: string; date: string; month: s
     return `${option.day}, ${option.month} ${option.date}`;
 }
 
+function hasText(value: string | null | undefined) {
+    return typeof value === "string" && value.trim().length > 0;
+}
+
+function getMissingProfileFields(profile: Profile | null, businessEmail?: string | null) {
+    const missing: string[] = [];
+    const company = profile?.company ?? null;
+
+    if (!hasText(profile?.full_name)) missing.push("Full Name");
+    if (!hasText(profile?.job_title)) missing.push("Job Title");
+    if (!hasText(profile?.phone_number)) missing.push("Phone Number");
+    if (!hasText(businessEmail)) missing.push("Business Email");
+
+    if (!company) {
+        missing.push(
+            "Company Legal Name",
+            "Registration Number",
+            "HQ Office Address",
+            "Office City",
+            "Office Zip / Postal",
+            "Delivery Address",
+            "Delivery City",
+            "Delivery Zip / Postal",
+            "Industry",
+            "Team Size"
+        );
+        return missing;
+    }
+
+    if (!hasText(company.company_name)) missing.push("Company Legal Name");
+    if (!hasText(company.registration_number)) missing.push("Registration Number");
+    if (!hasText(company.address)) missing.push("HQ Office Address");
+    if (!hasText(company.office_city)) missing.push("Office City");
+    if (!hasText(company.office_zip_postal)) missing.push("Office Zip / Postal");
+
+    const resolvedDeliveryAddress = hasText(company.delivery_address) ? company.delivery_address : company.address;
+    const resolvedDeliveryCity = hasText(company.delivery_city) ? company.delivery_city : company.office_city;
+    const resolvedDeliveryZipPostal = hasText(company.delivery_zip_postal) ? company.delivery_zip_postal : company.office_zip_postal;
+
+    if (!hasText(resolvedDeliveryAddress)) missing.push("Delivery Address");
+    if (!hasText(resolvedDeliveryCity)) missing.push("Delivery City");
+    if (!hasText(resolvedDeliveryZipPostal)) missing.push("Delivery Zip / Postal");
+    if (!hasText(company.industry)) missing.push("Industry");
+    if (!hasText(company.team_size)) missing.push("Team Size");
+
+    return missing;
+}
+
 export default function DeliveryCheckoutScreen() {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
+    const { data: profile, loading: profileLoading } = useProfile(user?.id);
     const { items: cartItems, clearCart } = useCart();
     const {
         productName,
@@ -80,7 +129,6 @@ export default function DeliveryCheckoutScreen() {
     const [phoneNumber, setPhoneNumber] = useState("");
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const deliveryOptions = useMemo(() => buildDeliveryOptions(), []);
     const selectedDateIndex = Math.min(selectedDate, deliveryOptions.length - 1);
@@ -92,19 +140,69 @@ export default function DeliveryCheckoutScreen() {
         return parsed;
     })();
     const isFromCartFlow = fromCart === "1" || fromCart === "true";
+    const missingProfileFields = useMemo(
+        () => getMissingProfileFields(profile, user?.email ?? null),
+        [profile, user?.email]
+    );
+    const isProfileIncomplete = missingProfileFields.length > 0;
+
+    useEffect(() => {
+        if (!profile) return;
+
+        setCompanyName((current) => (current.trim().length > 0 ? current : profile.company?.company_name ?? ""));
+        setStreetAddress((current) => (current.trim().length > 0 ? current : profile.company?.delivery_address ?? profile.company?.address ?? ""));
+        setCity((current) => (current.trim().length > 0 ? current : profile.company?.delivery_city ?? profile.company?.office_city ?? ""));
+        setZipPostal((current) => (current.trim().length > 0 ? current : profile.company?.delivery_zip_postal ?? profile.company?.office_zip_postal ?? ""));
+        setFullName((current) => (current.trim().length > 0 ? current : profile.full_name ?? ""));
+        setPhoneNumber((current) => (current.trim().length > 0 ? current : profile.phone_number ?? ""));
+    }, [profile]);
+
+    const handleOpenProfileSetup = () => {
+        router.push({
+            pathname: "/(onboarding)/personal-info",
+            params: {
+                full_name: profile?.full_name ?? "",
+                job_title: profile?.job_title ?? "",
+                phone_number: profile?.phone_number ?? "",
+                business_email: user?.email ?? "",
+                company_name: profile?.company?.company_name ?? "",
+                registration_number: profile?.company?.registration_number ?? "",
+                address: profile?.company?.address ?? "",
+                office_city: profile?.company?.office_city ?? "",
+                office_zip_postal: profile?.company?.office_zip_postal ?? "",
+                delivery_address: profile?.company?.delivery_address ?? "",
+                delivery_city: profile?.company?.delivery_city ?? "",
+                delivery_zip_postal: profile?.company?.delivery_zip_postal ?? "",
+                industry: profile?.company?.industry ?? "",
+                team_size: profile?.company?.team_size ?? "",
+            },
+        });
+    };
 
     const handleProceedToPayment = async () => {
-        setSubmitError(null);
-
         if (!user) {
             Alert.alert("Sign In Required", "Please sign in to place an order.");
             router.push("/(auth)/login");
             return;
         }
 
+        if (profileLoading) {
+            Alert.alert("Please Wait", "Checking your profile details. Please try again.");
+            return;
+        }
+
+        if (missingProfileFields.length > 0) {
+            const message = `Complete your profile before placing an order. Missing: ${missingProfileFields.join(", ")}.`;
+            Alert.alert("Complete Profile Required", message, [
+                { text: "Complete Profile", onPress: handleOpenProfileSetup },
+                { text: "Cancel", style: "cancel" },
+            ]);
+            return;
+        }
+
         const requiredFields = [
             { label: "Company Name", value: companyName },
-            { label: "Street Address", value: streetAddress },
+            { label: "Delivery Address", value: streetAddress },
             { label: "City", value: city },
             { label: "Zip / Postal", value: zipPostal },
             { label: "Full Name", value: fullName },
@@ -117,7 +215,6 @@ export default function DeliveryCheckoutScreen() {
 
         if (missingFields.length > 0) {
             const message = `Please complete all required fields: ${missingFields.join(", ")}.`;
-            setSubmitError(message);
             Alert.alert("Required Fields", message);
             return;
         }
@@ -175,7 +272,6 @@ export default function DeliveryCheckoutScreen() {
             });
         } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to create order";
-            setSubmitError(message);
             Alert.alert("Order Failed", message);
         } finally {
             setSubmitting(false);
@@ -216,10 +312,10 @@ export default function DeliveryCheckoutScreen() {
                             />
                         </View>
                         <View>
-                            <Text className="mb-1 text-sm font-medium text-slate-600">Street Address</Text>
+                            <Text className="mb-1 text-sm font-medium text-slate-600">Delivery Address</Text>
                             <TextInput
                                 className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-900"
-                                placeholder="123 Innovation Blvd, Suite 400"
+                                placeholder="Street address, City, State, Zip"
                                 placeholderTextColor="#9CA3AF"
                                 value={streetAddress}
                                 onChangeText={setStreetAddress}
@@ -336,12 +432,12 @@ export default function DeliveryCheckoutScreen() {
 
                 <View className="mb-6 rounded-2xl border border-gray-100 bg-white p-4">
                     <View className="flex-row items-start">
-                    <TouchableOpacity
-                        onPress={() => setTermsAccepted(!termsAccepted)}
-                        className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${termsAccepted ? "border-primary bg-primary" : "border-gray-300 bg-white"}`}
-                    >
-                        {termsAccepted && <MaterialIcons name="check" size={14} color="white" />}
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setTermsAccepted(!termsAccepted)}
+                            className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${termsAccepted ? "border-primary bg-primary" : "border-gray-300 bg-white"}`}
+                        >
+                            {termsAccepted && <MaterialIcons name="check" size={14} color="white" />}
+                        </TouchableOpacity>
                         <View className="ml-3 flex-1">
                             <Text className="text-sm font-semibold text-gray-900">Rental Agreement</Text>
                             <Text className="text-sm text-slate-500">
@@ -351,9 +447,15 @@ export default function DeliveryCheckoutScreen() {
                     </View>
                 </View>
 
-                {submitError && (
-                    <View className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-                        <Text className="text-sm text-red-700">{submitError}</Text>
+                {!profileLoading && !!user && missingProfileFields.length > 0 && (
+                    <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <Text className="text-sm font-semibold text-amber-800">Complete Profile Required</Text>
+                        <Text className="mt-1 text-sm text-amber-700">
+                            Missing: {missingProfileFields.join(", ")}
+                        </Text>
+                        <TouchableOpacity className="mt-3 self-start rounded-lg bg-amber-600 px-3 py-2" onPress={handleOpenProfileSetup}>
+                            <Text className="text-sm font-semibold text-white">Complete Profile</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
             </ScrollView>
@@ -376,12 +478,18 @@ export default function DeliveryCheckoutScreen() {
                 </View>
 
                 <TouchableOpacity
-                    disabled={submitting}
+                    disabled={submitting || profileLoading || isProfileIncomplete}
                     className="w-full flex-row items-center justify-center rounded-xl bg-primary py-4 disabled:opacity-60"
                     onPress={() => void handleProceedToPayment()}
                 >
                     <Text className="text-base font-semibold text-white">
-                        {submitting ? "Submitting..." : "Proceed to Payment"}
+                        {submitting
+                            ? "Submitting..."
+                            : profileLoading
+                                ? "Checking Profile..."
+                                : isProfileIncomplete
+                                    ? "Complete Profile to Continue"
+                                    : "Proceed to Payment"}
                     </Text>
                     <MaterialIcons name="arrow-forward" size={18} color="white" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>

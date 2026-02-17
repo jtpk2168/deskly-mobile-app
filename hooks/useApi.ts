@@ -49,9 +49,13 @@ export type Profile = {
         company_name: string;
         registration_number: string | null;
         address: string | null;
+        office_city: string | null;
+        office_zip_postal: string | null;
+        delivery_address: string | null;
+        delivery_city: string | null;
+        delivery_zip_postal: string | null;
         industry: string | null;
         team_size: string | null;
-        rental_duration_preference: string | null;
     } | null;
 };
 
@@ -91,6 +95,26 @@ export type CreateSubscriptionPayload = {
     }[];
 };
 
+export type UpsertProfilePayload = {
+    user_id: string;
+    full_name?: string | null;
+    job_title?: string | null;
+    phone_number?: string | null;
+    marketing_consent?: boolean;
+    company?: {
+        company_name: string;
+        registration_number?: string | null;
+        address?: string | null;
+        office_city?: string | null;
+        office_zip_postal?: string | null;
+        delivery_address?: string | null;
+        delivery_city?: string | null;
+        delivery_zip_postal?: string | null;
+        industry?: string | null;
+        team_size?: string | null;
+    } | null;
+};
+
 // ─── Generic hook ─────────────────────────────────────────
 
 function useApiQuery<T>(endpoint: string, enabled = true) {
@@ -103,6 +127,7 @@ function useApiQuery<T>(endpoint: string, enabled = true) {
         setError(null);
         const result = await fetchApi<T>(endpoint);
         if (result.error) {
+            setData(null);
             setError(result.error);
         } else {
             setData(result.data);
@@ -114,6 +139,8 @@ function useApiQuery<T>(endpoint: string, enabled = true) {
         if (enabled) {
             fetchData();
         } else {
+            setData(null);
+            setError(null);
             setLoading(false);
         }
     }, [fetchData, enabled]);
@@ -158,6 +185,19 @@ export async function createSubscription(payload: CreateSubscriptionPayload) {
 
     if (result.error || !result.data) {
         throw new Error(result.error || 'Failed to create subscription');
+    }
+
+    return result.data;
+}
+
+export async function upsertProfile(payload: UpsertProfilePayload) {
+    const result = await fetchApi<Profile>('/api/profile', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+
+    if (result.error || !result.data) {
+        throw new Error(result.error || 'Failed to save profile');
     }
 
     return result.data;

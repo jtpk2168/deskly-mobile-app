@@ -111,18 +111,13 @@ export default function RentalsScreen() {
                                     <MaterialIcons name="chevron-right" size={18} color="#94A3B8" style={{ marginLeft: 6 }} />
                                 </View>
 
-                                <View className="mb-5 flex-row items-start gap-4">
-                                    <View className="h-14 w-14 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
-                                        <MaterialIcons name="event-seat" size={28} color="#6B8599" />
-                                    </View>
-                                    <View className="pr-24">
-                                        <Text className="text-lg font-bold leading-tight text-gray-900">
-                                            {sub.bundles?.name ?? 'Furniture Rental'}
-                                        </Text>
-                                        <Text className="mt-1 text-sm font-bold uppercase tracking-wider text-slate-400">
-                                            ID: #{sub.id.substring(0, 8).toUpperCase()}
-                                        </Text>
-                                    </View>
+                                <View className="mb-5 pr-24">
+                                    <Text className="text-lg font-bold leading-tight text-gray-900">
+                                        {sub.bundles?.name ?? 'Furniture Rental'}
+                                    </Text>
+                                    <Text className="mt-1 text-sm font-bold uppercase tracking-wider text-slate-400">
+                                        ID: #{sub.id.substring(0, 8).toUpperCase()}
+                                    </Text>
                                 </View>
 
                                 <View className="flex-row gap-3">
