@@ -58,13 +58,37 @@ export type Profile = {
 export type Subscription = {
     id: string;
     user_id: string;
-    status: string;
+    status: 'active' | 'pending' | 'cancelled' | 'completed' | string;
     bundle_id: string | null;
     start_date: string | null;
     end_date: string | null;
     monthly_total: number | null;
     created_at: string;
     bundles: Bundle | null;
+    subscription_items?: {
+        product_name: string;
+        category: string | null;
+        monthly_price: number | null;
+        duration_months: number | null;
+        quantity: number;
+        image_url?: string | null;
+    }[];
+};
+
+export type CreateSubscriptionPayload = {
+    user_id: string;
+    bundle_id?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    monthly_total?: number | null;
+    items?: {
+        product_id?: string | null;
+        product_name: string;
+        category?: string | null;
+        monthly_price?: number | null;
+        duration_months?: number | null;
+        quantity: number;
+    }[];
 };
 
 // ─── Generic hook ─────────────────────────────────────────
@@ -113,9 +137,28 @@ export function useProduct(id?: string) {
 }
 
 export function useProfile(userId?: string) {
-    return useApiQuery<Profile>(`/api/profile?user_id=${userId}`, !!userId);
+    const queryUserId = userId ? encodeURIComponent(userId) : '';
+    return useApiQuery<Profile>(`/api/profile?user_id=${queryUserId}`, !!userId);
 }
 
 export function useSubscriptions(userId?: string) {
-    return useApiQuery<Subscription[]>(`/api/subscriptions?user_id=${userId}`, !!userId);
+    const queryUserId = userId ? encodeURIComponent(userId) : '';
+    return useApiQuery<Subscription[]>(`/api/subscriptions?user_id=${queryUserId}`, !!userId);
+}
+
+export function useSubscription(id?: string) {
+    return useApiQuery<Subscription>(`/api/subscriptions/${id}`, !!id);
+}
+
+export async function createSubscription(payload: CreateSubscriptionPayload) {
+    const result = await fetchApi<Subscription>('/api/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+
+    if (result.error || !result.data) {
+        throw new Error(result.error || 'Failed to create subscription');
+    }
+
+    return result.data;
 }

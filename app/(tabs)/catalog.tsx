@@ -3,9 +3,10 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, Touc
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useProducts } from "../../hooks/useApi";
+import { Product, useProducts } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
+import { useCart } from "../../contexts/CartContext";
 
 const categories = ["All", "Desks", "Chairs", "Storage", "Meeting", "Accessories"];
 
@@ -42,8 +43,27 @@ export default function CatalogScreen() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [query, setQuery] = useState("");
     const { contentPaddingBottom } = useTabBarSpacing();
+    const { addToCart } = useCart();
 
     const { data: products, loading, error } = useProducts(activeCategory, query);
+
+    const handleAddToCart = (product: Product, monthlyPrice: number) => {
+        const baseMonthlyPrice = toNumeric(product.monthly_price);
+        const pricingTiers = normalizePricingTiers(product.pricing_tiers);
+
+        addToCart({
+            productId: product.id,
+            name: product.name,
+            category: product.category,
+            imageUrl: product.image_url,
+            baseMonthlyPrice,
+            pricingMode: product.pricing_mode,
+            pricingTiers,
+            monthlyPrice,
+            durationMonths: 12,
+            quantity: 1,
+        });
+    };
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50" edges={["top", "left", "right"]}>
@@ -120,22 +140,25 @@ export default function CatalogScreen() {
                             const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
 
                             return (
-                                <TouchableOpacity
+                                <View
                                     key={product.id}
                                     className="mb-4 w-[48%] rounded-2xl border border-gray-50 bg-white p-4"
-                                    onPress={() => router.push(`/product/${product.id}`)}
-                                    activeOpacity={0.92}
                                 >
-                                    <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
-                                        {product.image_url && (
-                                            <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
-                                        )}
-                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => router.push(`/product/${product.id}`)}
+                                        activeOpacity={0.92}
+                                    >
+                                        <View className="relative mb-3 aspect-[4/5] overflow-hidden rounded-xl bg-gray-100">
+                                            {product.image_url && (
+                                                <Image source={{ uri: product.image_url }} className="h-full w-full" resizeMode="cover" />
+                                            )}
+                                        </View>
 
-                                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                                        {product.name}
-                                    </Text>
-                                    <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
+                                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                                            {product.name}
+                                        </Text>
+                                        <Text className="mt-1 text-sm text-slate-400">{product.category}</Text>
+                                    </TouchableOpacity>
 
                                     <View className="mt-3 flex-row items-end justify-between">
                                         <View className="flex-row items-baseline">
@@ -144,11 +167,16 @@ export default function CatalogScreen() {
                                             </Text>
                                             <Text className="text-sm text-slate-400">/mo</Text>
                                         </View>
-                                        <TouchableOpacity className="h-9 w-9 items-center justify-center rounded-full bg-primary">
+                                        <TouchableOpacity
+                                            className="h-9 w-9 items-center justify-center rounded-full bg-primary"
+                                            onPress={() => handleAddToCart(product, listingMonthlyPrice)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Add ${product.name} to plan`}
+                                        >
                                             <MaterialIcons name="add" size={18} color="#FFFFFF" />
                                         </TouchableOpacity>
                                     </View>
-                                </TouchableOpacity>
+                                </View>
                             );
                         })}
                     </View>

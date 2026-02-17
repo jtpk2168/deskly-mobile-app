@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import { AuthProvider } from '../contexts/AuthContext';
+import { CartProvider } from '../contexts/CartContext';
 
 configureReanimatedLogger({
     level: ReanimatedLogLevel.warn,
@@ -34,15 +35,18 @@ export default function RootLayout() {
 
     return (
         <AuthProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="(onboarding)/personal-info" options={{ headerShown: false }} />
-                <Stack.Screen name="(onboarding)/company-details" options={{ headerShown: false }} />
-                <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
-                <Stack.Screen name="checkout/delivery" options={{ headerShown: false }} />
-                <Stack.Screen name="checkout/confirmation" options={{ headerShown: false }} />
-            </Stack>
+            <CartProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(onboarding)/personal-info" options={{ headerShown: false }} />
+                    <Stack.Screen name="(onboarding)/company-details" options={{ headerShown: false }} />
+                    <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="rentals/[id]" options={{ headerShown: false }} />
+                    <Stack.Screen name="checkout/delivery" options={{ headerShown: false }} />
+                    <Stack.Screen name="checkout/confirmation" options={{ headerShown: false }} />
+                </Stack>
+            </CartProvider>
         </AuthProvider>
     );
 }

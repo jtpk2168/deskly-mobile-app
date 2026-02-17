@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useProduct } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
+import { useCart } from "../../contexts/CartContext";
 
 const DURATION_OPTIONS = [6, 12, 24];
 
@@ -30,6 +31,7 @@ function normalizePricingTiers(input: { min_months: number; monthly_price: numbe
 export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const [selectedDuration, setSelectedDuration] = useState(12);
+    const { addToCart } = useCart();
 
     const { data: product, loading, error } = useProduct(id);
 
@@ -65,6 +67,21 @@ export default function ProductDetailsScreen() {
     const effectiveMonthlyPrice = applicableTier ? applicableTier.monthly_price : baseMonthlyPrice;
     const totalPrice = effectiveMonthlyPrice * selectedDuration;
     const hasDiscount = effectiveMonthlyPrice < baseMonthlyPrice;
+
+    const handleAddToPlan = () => {
+        addToCart({
+            productId: product.id,
+            name: product.name,
+            category: product.category,
+            imageUrl: product.image_url,
+            baseMonthlyPrice,
+            pricingMode: product.pricing_mode,
+            pricingTiers,
+            monthlyPrice: effectiveMonthlyPrice,
+            durationMonths: selectedDuration,
+            quantity: 1,
+        });
+    };
 
     return (
         <View className="flex-1 bg-white">
@@ -192,7 +209,7 @@ export default function ProductDetailsScreen() {
                     </View>
                     <TouchableOpacity
                         className="flex-1 flex-row items-center justify-center rounded-xl bg-primary py-4"
-                        onPress={() => router.push("/checkout/delivery")}
+                        onPress={handleAddToPlan}
                     >
                         <Text className="text-base font-semibold text-white">Add to Plan</Text>
                         <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />

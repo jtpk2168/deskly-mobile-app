@@ -30,6 +30,37 @@ type ApiResponse<T> = {
     meta: { page?: number; limit?: number; total?: number } | null;
 };
 
+function resolveErrorMessage(status: number, rawBody: string) {
+    const fallback = `Request failed (${status})`;
+    if (!rawBody) return fallback;
+
+    try {
+        const parsed = JSON.parse(rawBody) as {
+            error?: unknown;
+            message?: unknown;
+            meta?: { errors?: unknown };
+        };
+
+        if (typeof parsed.error === 'string' && parsed.error.trim()) {
+            return parsed.error;
+        }
+
+        if (typeof parsed.message === 'string' && parsed.message.trim()) {
+            return parsed.message;
+        }
+
+        if (Array.isArray(parsed.meta?.errors)) {
+            const messages = parsed.meta.errors.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+            if (messages.length > 0) return messages.join(', ');
+        }
+    } catch {
+        const trimmed = rawBody.trim();
+        if (trimmed) return trimmed;
+    }
+
+    return fallback;
+}
+
 /**
  * Generic fetch wrapper for calling the Next.js API.
  */
@@ -65,9 +96,10 @@ export async function fetchApi<T>(
         });
 
         if (!response.ok) {
+            const rawBody = await response.text();
             return {
                 data: null,
-                error: `Request failed (${response.status})`,
+                error: resolveErrorMessage(response.status, rawBody),
                 meta: null,
             };
         }

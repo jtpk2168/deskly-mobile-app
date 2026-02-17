@@ -2,16 +2,30 @@ import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { useSubscriptions } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
+import { useAuth } from "../../contexts/AuthContext";
 
-// TODO: Replace with real auth user ID after auth is connected
-const MOCK_USER_ID = undefined;
+function formatCurrency(value: number | null) {
+    if (value == null) return "RM —";
+    return `RM ${Number(value).toFixed(2)}`;
+}
 
 export default function RentalsScreen() {
+    const { user, isLoading: authLoading } = useAuth();
     const { contentPaddingBottom } = useTabBarSpacing();
-    const { data: subscriptions, loading, error } = useSubscriptions(MOCK_USER_ID);
+    const { data: subscriptions, loading, error, refetch } = useSubscriptions(user?.id);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (user?.id) {
+                void refetch();
+            }
+        }, [refetch, user?.id])
+    );
 
     return (
         <SafeAreaView className="flex-1 bg-gray-100" edges={["top", "left", "right"]}>
@@ -20,13 +34,29 @@ export default function RentalsScreen() {
             <ScrollView className="flex-1 px-6 py-7" contentContainerStyle={{ paddingBottom: contentPaddingBottom }} showsVerticalScrollIndicator={false}>
                 <View className="mb-6">
                     <Text className="text-xl font-bold text-gray-900">Your Active Rentals</Text>
-                    <Text className="mt-2 text-sm text-slate-500">Manage your enterprise furniture fleet.</Text>
+                    <Text className="mt-2 text-sm text-slate-500">Order status is updated by admin and reflected here.</Text>
                 </View>
 
-                {loading ? (
+                {authLoading || loading ? (
                     <View className="items-center justify-center py-20">
                         <ActivityIndicator size="large" color="#6B8599" />
                         <Text className="mt-3 text-sm text-slate-400">Loading rentals...</Text>
+                    </View>
+                ) : !user ? (
+                    <View className="items-center justify-center py-16 px-4">
+                        <View className="h-20 w-20 items-center justify-center rounded-full bg-white mb-4">
+                            <MaterialIcons name="lock-outline" size={40} color="#CBD5E1" />
+                        </View>
+                        <Text className="text-lg font-bold text-gray-900 mb-2">Sign In Required</Text>
+                        <Text className="text-sm text-slate-400 text-center mb-6">
+                            Sign in to view and manage your active rentals.
+                        </Text>
+                        <TouchableOpacity
+                            className="rounded-xl bg-primary px-8 py-3.5"
+                            onPress={() => router.push("/(auth)/login")}
+                        >
+                            <Text className="text-sm font-semibold text-white">Go to Login</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : error ? (
                     <View className="items-center justify-center py-16 px-4">
@@ -53,8 +83,18 @@ export default function RentalsScreen() {
                 ) : (
                     <>
                         {subscriptions.map((sub) => (
-                            <View key={sub.id} className="relative mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5">
-                                <View className="absolute right-5 top-5">
+                            <TouchableOpacity
+                                key={sub.id}
+                                activeOpacity={0.9}
+                                className="relative mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5"
+                                onPress={() =>
+                                    router.push({
+                                        pathname: '/rentals/[id]',
+                                        params: { id: sub.id },
+                                    })
+                                }
+                            >
+                                <View className="absolute right-5 top-5 flex-row items-center">
                                     <View className={`flex-row items-center rounded-full px-2 py-0.5 ${sub.status === 'active' ? 'bg-green-100' :
                                             sub.status === 'pending' ? 'bg-yellow-100' :
                                                 'bg-gray-100'
@@ -68,13 +108,14 @@ export default function RentalsScreen() {
                                                     'text-gray-500'
                                             }`}>{sub.status}</Text>
                                     </View>
+                                    <MaterialIcons name="chevron-right" size={18} color="#94A3B8" style={{ marginLeft: 6 }} />
                                 </View>
 
                                 <View className="mb-5 flex-row items-start gap-4">
                                     <View className="h-14 w-14 items-center justify-center rounded-xl border border-gray-100 bg-gray-50">
                                         <MaterialIcons name="event-seat" size={28} color="#6B8599" />
                                     </View>
-                                    <View className="pr-16">
+                                    <View className="pr-24">
                                         <Text className="text-lg font-bold leading-tight text-gray-900">
                                             {sub.bundles?.name ?? 'Furniture Rental'}
                                         </Text>
@@ -88,7 +129,7 @@ export default function RentalsScreen() {
                                     <View className="flex-1 rounded-xl border border-gray-100 bg-gray-50 p-3">
                                         <Text className="text-sm font-bold uppercase tracking-widest text-slate-400">Monthly Rate</Text>
                                         <Text className="mt-1 text-base font-bold text-gray-900">
-                                            RM {sub.monthly_total ?? '—'}
+                                            {formatCurrency(sub.monthly_total)}
                                         </Text>
                                     </View>
                                     <View className="flex-1 rounded-xl border border-gray-100 bg-gray-50 p-3">
@@ -98,7 +139,7 @@ export default function RentalsScreen() {
                                         </Text>
                                     </View>
                                 </View>
-                            </View>
+                            </TouchableOpacity>
                         ))}
                     </>
                 )}
