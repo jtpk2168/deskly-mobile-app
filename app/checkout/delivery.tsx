@@ -1,10 +1,10 @@
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from "react-native";
+import { Alert, Linking, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppTopBar } from "../../components/ui/AppTopBar";
-import { createSubscription, useProfile, type Profile } from "../../hooks/useApi";
+import { startBillingCheckout, useProfile, type Profile } from "../../hooks/useApi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
 
@@ -139,6 +139,7 @@ export default function DeliveryCheckoutScreen() {
         if (!Number.isInteger(parsed) || parsed <= 0) return 12;
         return parsed;
     })();
+    const minimumTermMonths = Math.max(12, rentalDurationMonths);
     const isFromCartFlow = fromCart === "1" || fromCart === "true";
     const missingProfileFields = useMemo(
         () => getMissingProfileFields(profile, user?.email ?? null),
@@ -229,11 +230,16 @@ export default function DeliveryCheckoutScreen() {
             return;
         }
 
+        if (rentalDurationMonths < 12) {
+            Alert.alert("12-Month Minimum", "Deskly subscriptions require a minimum 12-month commitment.");
+            return;
+        }
+
         setSubmitting(true);
 
         try {
             const startDate = selectedDeliveryOption.iso;
-            const endDate = addMonths(new Date(startDate), rentalDurationMonths).toISOString();
+            const endDate = addMonths(new Date(startDate), minimumTermMonths).toISOString();
             const subscriptionItems = isFromCartFlow
                 ? cartItems.map((item) => ({
                     product_id: item.productId,
@@ -243,19 +249,35 @@ export default function DeliveryCheckoutScreen() {
                     duration_months: item.durationMonths,
                     quantity: item.quantity,
                 }))
-                : [];
+                : [{
+                    product_name: productName ?? "Furniture Rental",
+                    category: "General",
+                    monthly_price: Number(monthlyTotalValue.toFixed(2)),
+                    duration_months: minimumTermMonths,
+                    quantity: 1,
+                }];
 
-            const created = await createSubscription({
+            const checkout = await startBillingCheckout({
                 user_id: user.id,
                 bundle_id: null,
                 start_date: startDate,
                 end_date: endDate,
                 monthly_total: Number(monthlyTotalValue.toFixed(2)),
+                product_name: productName ?? "Furniture Rental",
+                minimum_term_months: minimumTermMonths,
                 items: subscriptionItems,
             });
+            const created = checkout.subscription;
 
             if (isFromCartFlow) {
                 clearCart();
+            }
+
+            if (checkout.checkout_url) {
+                const canOpen = await Linking.canOpenURL(checkout.checkout_url);
+                if (canOpen) {
+                    await Linking.openURL(checkout.checkout_url);
+                }
             }
 
             router.push({
@@ -265,7 +287,7 @@ export default function DeliveryCheckoutScreen() {
                     productName: productName ?? "Furniture Rental",
                     monthlyTotal: String(created.monthly_total ?? monthlyTotalValue),
                     status: created.status ?? "pending",
-                    durationMonths: String(rentalDurationMonths),
+                    durationMonths: String(minimumTermMonths),
                     startDate: created.start_date ?? startDate,
                     endDate: created.end_date ?? endDate,
                 },

@@ -14,6 +14,13 @@ function formatCurrency(value: number | null) {
     return `RM ${Number(value).toFixed(2)}`;
 }
 
+function formatStatusLabel(status: string) {
+    return status
+        .split("_")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
 export default function RentalsScreen() {
     const { user, isLoading: authLoading } = useAuth();
     const { contentPaddingBottom } = useTabBarSpacing();
@@ -97,16 +104,25 @@ export default function RentalsScreen() {
                                 <View className="absolute right-5 top-5 flex-row items-center">
                                     <View className={`flex-row items-center rounded-full px-2 py-0.5 ${sub.status === 'active' ? 'bg-green-100' :
                                             sub.status === 'pending' ? 'bg-yellow-100' :
-                                                'bg-gray-100'
+                                                sub.status === 'pending_payment' ? 'bg-amber-100' :
+                                                    sub.status === 'payment_failed' ? 'bg-rose-100' :
+                                                        sub.status === 'incomplete' ? 'bg-orange-100' :
+                                                            'bg-gray-100'
                                         }`}>
                                         <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${sub.status === 'active' ? 'bg-green-500' :
                                                 sub.status === 'pending' ? 'bg-yellow-500' :
-                                                    'bg-gray-400'
+                                                    sub.status === 'pending_payment' ? 'bg-amber-500' :
+                                                        sub.status === 'payment_failed' ? 'bg-rose-500' :
+                                                            sub.status === 'incomplete' ? 'bg-orange-500' :
+                                                                'bg-gray-400'
                                             }`} />
-                                        <Text className={`text-sm font-bold uppercase ${sub.status === 'active' ? 'text-green-700' :
+                                        <Text className={`text-xs font-bold uppercase ${sub.status === 'active' ? 'text-green-700' :
                                                 sub.status === 'pending' ? 'text-yellow-700' :
-                                                    'text-gray-500'
-                                            }`}>{sub.status}</Text>
+                                                    sub.status === 'pending_payment' ? 'text-amber-700' :
+                                                        sub.status === 'payment_failed' ? 'text-rose-700' :
+                                                            sub.status === 'incomplete' ? 'text-orange-700' :
+                                                                'text-gray-500'
+                                            }`}>{formatStatusLabel(sub.status)}</Text>
                                     </View>
                                     <MaterialIcons name="chevron-right" size={18} color="#94A3B8" style={{ marginLeft: 6 }} />
                                 </View>

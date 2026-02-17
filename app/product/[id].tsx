@@ -7,7 +7,7 @@ import { useProduct } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useCart } from "../../contexts/CartContext";
 
-const DURATION_OPTIONS = [6, 12, 24];
+const DURATION_OPTIONS = [12, 24];
 
 function toNumeric(value: unknown) {
     const parsed = Number(value);

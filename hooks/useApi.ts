@@ -62,11 +62,15 @@ export type Profile = {
 export type Subscription = {
     id: string;
     user_id: string;
-    status: 'active' | 'pending' | 'cancelled' | 'completed' | string;
+    status: 'active' | 'pending' | 'pending_payment' | 'payment_failed' | 'incomplete' | 'cancelled' | 'completed' | string;
     bundle_id: string | null;
     start_date: string | null;
     end_date: string | null;
     monthly_total: number | null;
+    subtotal_amount?: number | null;
+    tax_amount?: number | null;
+    minimum_term_months?: number | null;
+    billing_currency?: string | null;
     created_at: string;
     bundles: Bundle | null;
     subscription_items?: {
@@ -93,6 +97,25 @@ export type CreateSubscriptionPayload = {
         duration_months?: number | null;
         quantity: number;
     }[];
+    product_name?: string;
+    currency?: string;
+    minimum_term_months?: number;
+    success_url?: string;
+    cancel_url?: string;
+};
+
+export type BillingCheckoutResult = {
+    subscription: Subscription;
+    checkout_url: string | null;
+    checkout_session_id: string | null;
+    billing_provider: 'mock' | 'stripe' | string;
+    tax_quote: {
+        subtotal: number;
+        sst_rate: number;
+        sst_amount: number;
+        total: number;
+        currency: string;
+    };
 };
 
 export type UpsertProfilePayload = {
@@ -185,6 +208,19 @@ export async function createSubscription(payload: CreateSubscriptionPayload) {
 
     if (result.error || !result.data) {
         throw new Error(result.error || 'Failed to create subscription');
+    }
+
+    return result.data;
+}
+
+export async function startBillingCheckout(payload: CreateSubscriptionPayload) {
+    const result = await fetchApi<BillingCheckoutResult>('/api/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+
+    if (result.error || !result.data) {
+        throw new Error(result.error || 'Failed to start billing checkout');
     }
 
     return result.data;

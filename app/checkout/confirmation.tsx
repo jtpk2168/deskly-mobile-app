@@ -40,6 +40,9 @@ function formatStatusLabel(status: string) {
 function statusBadgeClassName(status: string) {
     if (status === "active") return "bg-green-100";
     if (status === "pending") return "bg-yellow-100";
+    if (status === "pending_payment") return "bg-amber-100";
+    if (status === "payment_failed") return "bg-rose-100";
+    if (status === "incomplete") return "bg-orange-100";
     if (status === "cancelled") return "bg-red-100";
     if (status === "completed") return "bg-blue-100";
     return "bg-gray-100";
@@ -48,6 +51,9 @@ function statusBadgeClassName(status: string) {
 function statusTextClassName(status: string) {
     if (status === "active") return "text-green-700";
     if (status === "pending") return "text-yellow-700";
+    if (status === "pending_payment") return "text-amber-700";
+    if (status === "payment_failed") return "text-rose-700";
+    if (status === "incomplete") return "text-orange-700";
     if (status === "cancelled") return "text-red-700";
     if (status === "completed") return "text-blue-700";
     return "text-gray-600";
@@ -56,6 +62,9 @@ function statusTextClassName(status: string) {
 function statusDotClassName(status: string) {
     if (status === "active") return "bg-green-500";
     if (status === "pending") return "bg-yellow-500";
+    if (status === "pending_payment") return "bg-amber-500";
+    if (status === "payment_failed") return "bg-rose-500";
+    if (status === "incomplete") return "bg-orange-500";
     if (status === "cancelled") return "bg-red-500";
     if (status === "completed") return "bg-blue-500";
     return "bg-gray-400";

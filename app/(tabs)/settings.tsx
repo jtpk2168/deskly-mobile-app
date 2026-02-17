@@ -6,7 +6,7 @@ import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
 
-const DURATION_OPTIONS = [6, 12, 24];
+const DURATION_OPTIONS = [12, 24];
 
 function formatCurrency(value: number) {
     return `RM ${value.toFixed(2)}`;
