@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ResizeMode, Video } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
 import { useProducts, Product } from "../../hooks/useApi";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 
@@ -37,6 +37,33 @@ function normalizePricingTiers(input: { min_months: number; monthly_price: numbe
         }))
         .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
         .sort((a, b) => a.min_months - b.min_months);
+}
+
+function FeedVideo({ uri, isActive }: { uri: string; isActive: boolean }) {
+    const player = useVideoPlayer({ uri }, (player) => {
+        player.loop = true;
+        player.muted = true;
+    });
+
+    useEffect(() => {
+        if (isActive) {
+            player.play();
+            return;
+        }
+
+        player.pause();
+    }, [isActive, player]);
+
+    return (
+        <VideoView
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
+            player={player}
+            contentFit="cover"
+            nativeControls={false}
+            allowsFullscreen={false}
+            allowsPictureInPicture={false}
+        />
+    );
 }
 
 function FeedItem({
@@ -68,14 +95,7 @@ function FeedItem({
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
             {item.video_url ? (
-                <Video
-                    source={{ uri: item.video_url }}
-                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
-                    shouldPlay={isActive}
-                    isLooping
-                    isMuted
-                    resizeMode={ResizeMode.COVER}
-                />
+                <FeedVideo uri={item.video_url} isActive={isActive} />
             ) : item.image_url ? (
                 <Image
                     source={{ uri: item.image_url }}
