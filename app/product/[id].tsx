@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useProduct } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useCart } from "../../contexts/CartContext";
@@ -84,7 +85,7 @@ export default function ProductDetailsScreen() {
     };
 
     return (
-        <View className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
             <AppTopBar
                 title="Product Details"
                 onBackPress={() => router.back()}
@@ -216,6 +217,6 @@ export default function ProductDetailsScreen() {
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
