@@ -7,6 +7,8 @@ import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
 
 const DURATION_OPTIONS = [12, 24];
+const SST_RATE = 0.08;
+const SST_RATE_PERCENT_LABEL = `${(SST_RATE * 100).toFixed(0)}%`;
 
 function formatCurrency(value: number) {
     return `RM ${value.toFixed(2)}`;
@@ -28,6 +30,8 @@ export default function PlanScreen() {
         (total, item) => total + item.monthlyPrice * item.quantity * item.durationMonths,
         0
     );
+    const monthlySst = Number((monthlyTotal * SST_RATE).toFixed(2));
+    const monthlyTotalWithSst = Number((monthlyTotal + monthlySst).toFixed(2));
 
     const handleConfirmPlan = () => {
         if (itemCount === 0) return;
@@ -149,9 +153,9 @@ export default function PlanScreen() {
                 {items.length > 0 && (
                     <View className="mt-4 rounded-2xl border border-gray-100 bg-white p-5">
                         <View className="flex-row items-center justify-between">
-                            <Text className="text-sm font-bold text-gray-900">Plan Summary</Text>
+                            <Text className="text-sm font-semibold text-gray-900">Plan Summary</Text>
                         </View>
-                        <Text className="mt-1 text-sm text-slate-400">
+                        <Text className="mt-1 text-sm text-slate-600">
                             Monthly billing is calculated from each item&apos;s selected duration and pricing.
                         </Text>
 
@@ -163,16 +167,16 @@ export default function PlanScreen() {
                                         <View className="flex-row items-start justify-between">
                                             <View className="pr-3">
                                                 <Text className="text-sm font-semibold text-gray-900">{item.name}</Text>
-                                                <Text className="mt-1 text-xs uppercase tracking-wide text-slate-400">
+                                                <Text className="mt-1 text-xs uppercase tracking-wide text-slate-500">
                                                     {item.quantity} x {formatCurrency(item.monthlyPrice)} /mo
                                                 </Text>
-                                                <Text className="mt-1 text-xs uppercase tracking-wide text-slate-400">
+                                                <Text className="mt-1 text-xs uppercase tracking-wide text-slate-500">
                                                     {item.durationMonths} months
                                                 </Text>
                                             </View>
                                             <View className="items-end">
-                                                <Text className="text-[11px] uppercase tracking-wider text-slate-400">Line Total</Text>
-                                                <Text className="text-sm font-bold text-primary">{formatCurrency(lineMonthlyTotal)} /mo</Text>
+                                                <Text className="text-[11px] uppercase tracking-wider text-slate-500">Line Total</Text>
+                                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(lineMonthlyTotal)} /mo</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -182,15 +186,29 @@ export default function PlanScreen() {
 
                         <View className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
                             <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-500">Actual Monthly Total</Text>
-                                <Text className="text-sm font-bold text-primary">{formatCurrency(monthlyTotal)} /mo</Text>
+                                <Text className="text-sm text-slate-600">Monthly Subtotal</Text>
+                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlyTotal)} /mo</Text>
                             </View>
                         </View>
 
                         <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
                             <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-500">Estimated Contract Value</Text>
-                                <Text className="text-sm font-bold text-gray-900">{formatCurrency(contractTotal)}</Text>
+                                <Text className="text-sm text-slate-600">SST ({SST_RATE_PERCENT_LABEL})</Text>
+                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlySst)} /mo</Text>
+                            </View>
+                        </View>
+
+                        <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                            <View className="flex-row items-center justify-between">
+                                <Text className="text-sm font-semibold text-gray-900">Estimated Monthly Total</Text>
+                                <Text className="text-sm font-bold text-primary">{formatCurrency(monthlyTotalWithSst)} /mo</Text>
+                            </View>
+                        </View>
+
+                        <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                            <View className="flex-row items-center justify-between">
+                                <Text className="text-sm text-slate-600">Estimated Contract Value</Text>
+                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(contractTotal)}</Text>
                             </View>
                         </View>
                     </View>

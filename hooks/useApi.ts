@@ -71,6 +71,12 @@ export type Subscription = {
     tax_amount?: number | null;
     minimum_term_months?: number | null;
     billing_currency?: string | null;
+    delivery_company_name?: string | null;
+    delivery_address?: string | null;
+    delivery_city?: string | null;
+    delivery_zip_postal?: string | null;
+    delivery_contact_name?: string | null;
+    delivery_contact_phone?: string | null;
     created_at: string;
     bundles: Bundle | null;
     subscription_items?: {
@@ -81,10 +87,30 @@ export type Subscription = {
         quantity: number;
         image_url?: string | null;
     }[];
+    billing_invoices?: {
+        id: string;
+        provider_invoice_id: string;
+        invoice_number: string | null;
+        status: string;
+        currency: string;
+        subtotal_amount: number | null;
+        tax_amount: number | null;
+        total_amount: number | null;
+        amount_paid: number | null;
+        amount_due: number | null;
+        hosted_invoice_url: string | null;
+        invoice_pdf: string | null;
+        due_date: string | null;
+        paid_at: string | null;
+        period_start_at: string | null;
+        period_end_at: string | null;
+        created_at: string;
+    }[];
 };
 
 export type CreateSubscriptionPayload = {
     user_id: string;
+    idempotency_key?: string;
     bundle_id?: string | null;
     start_date?: string | null;
     end_date?: string | null;
@@ -102,6 +128,12 @@ export type CreateSubscriptionPayload = {
     minimum_term_months?: number;
     success_url?: string;
     cancel_url?: string;
+    delivery_company_name?: string;
+    delivery_address?: string;
+    delivery_city?: string;
+    delivery_zip_postal?: string;
+    delivery_contact_name?: string;
+    delivery_contact_phone?: string;
 };
 
 export type BillingCheckoutResult = {

@@ -4,6 +4,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 
+const DEFAULT_SST_RATE_PERCENT = 8;
+
 function toNumeric(value: unknown) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
@@ -75,6 +77,9 @@ export default function OrderConfirmationScreen() {
         orderId,
         productName,
         monthlyTotal,
+        subtotalAmount,
+        sstAmount,
+        sstRatePercent,
         status,
         durationMonths,
         startDate,
@@ -83,6 +88,9 @@ export default function OrderConfirmationScreen() {
         orderId?: string;
         productName?: string;
         monthlyTotal?: string;
+        subtotalAmount?: string;
+        sstAmount?: string;
+        sstRatePercent?: string;
         status?: string;
         durationMonths?: string;
         startDate?: string;
@@ -90,6 +98,22 @@ export default function OrderConfirmationScreen() {
     }>();
 
     const monthlyTotalValue = toNumeric(monthlyTotal);
+    const providedSubtotalValue = toNumeric(subtotalAmount);
+    const providedSstAmountValue = toNumeric(sstAmount);
+    const requestedSstRatePercent = toNumeric(sstRatePercent);
+    const effectiveSstRatePercent = requestedSstRatePercent > 0 ? requestedSstRatePercent : DEFAULT_SST_RATE_PERCENT;
+    const computedFallbackSubtotal =
+        monthlyTotalValue > 0
+            ? Number((monthlyTotalValue / (1 + (effectiveSstRatePercent / 100))).toFixed(2))
+            : 0;
+    const monthlySubtotalValue = providedSubtotalValue > 0 ? providedSubtotalValue : computedFallbackSubtotal;
+    const monthlySstValue =
+        providedSstAmountValue > 0
+            ? providedSstAmountValue
+            : Number((monthlyTotalValue - monthlySubtotalValue).toFixed(2));
+    const sstRateLabel = Number.isInteger(effectiveSstRatePercent)
+        ? `${effectiveSstRatePercent.toFixed(0)}%`
+        : `${effectiveSstRatePercent.toFixed(2)}%`;
     const orderCode = orderId ? `#${orderId.substring(0, 8).toUpperCase()}` : "—";
     const orderStatus = normalizeStatus(status);
 
@@ -115,6 +139,16 @@ export default function OrderConfirmationScreen() {
                             <View className="flex-row items-baseline space-x-1">
                                 <Text className="text-3xl font-bold text-primary">{formatCurrency(monthlyTotalValue)}</Text>
                                 <Text className="text-sm text-gray-500 dark:text-gray-400">/mo</Text>
+                            </View>
+                            <View className="mt-3 w-full rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-xs text-slate-500">Subtotal</Text>
+                                    <Text className="text-xs font-semibold text-gray-900">{formatCurrency(monthlySubtotalValue)}</Text>
+                                </View>
+                                <View className="mt-1 flex-row items-center justify-between">
+                                    <Text className="text-xs text-slate-500">SST ({sstRateLabel})</Text>
+                                    <Text className="text-xs font-semibold text-gray-900">{formatCurrency(monthlySstValue)}</Text>
+                                </View>
                             </View>
                             <Text className="mt-2 text-sm text-slate-500">{productName ?? "Furniture Rental"}</Text>
                         </View>
@@ -192,7 +226,7 @@ export default function OrderConfirmationScreen() {
                             className="w-full bg-transparent py-4 px-4 rounded-xl border border-gray-200 dark:border-gray-700 items-center justify-center"
                             onPress={() => router.push('/(tabs)')}
                         >
-                            <Text className="text-base text-gray-600 dark:text-gray-400 font-medium">Go to Dashboard</Text>
+                            <Text className="text-base text-gray-600 dark:text-gray-400 font-medium">Go to Home</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
