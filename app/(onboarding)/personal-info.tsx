@@ -2,15 +2,9 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from "r
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, Button, Input, StickyActionBar } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
-
-function getParamValue(value?: string | string[]) {
-    if (Array.isArray(value)) return value[0] ?? "";
-    return value ?? "";
-}
+import { getParamValue } from "../../lib/ui";
 
 export default function PersonalInfoScreen() {
     const { user } = useAuth();
@@ -145,9 +139,9 @@ export default function PersonalInfoScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            <View className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-6 py-6">
+            <StickyActionBar className="bg-white" extraBottomPadding={0}>
                 <Button label="Continue" onPress={handleContinue} />
-            </View>
+            </StickyActionBar>
         </SafeAreaView>
     );
 }

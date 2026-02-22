@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
     Dimensions,
     FlatList,
     Image,
@@ -16,30 +15,12 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { LoadingState, StatePanel } from "../../components/ui";
 import { useProducts, Product } from "../../hooks/useApi";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
+import { formatPrice, getLowestTieredPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
-function toNumeric(value: unknown) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatPrice(value: number) {
-    return toNumeric(value).toFixed(2);
-}
-
-function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
-    if (!Array.isArray(input)) return [];
-    return input
-        .map((tier) => ({
-            min_months: Number(tier.min_months),
-            monthly_price: Number(tier.monthly_price),
-        }))
-        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
-        .sort((a, b) => a.min_months - b.min_months);
-}
 
 function FeedVideo({ uri, isActive, isMuted, isPaused }: { uri: string; isActive: boolean; isMuted: boolean; isPaused: boolean }) {
     const player = useVideoPlayer({ uri }, (player) => {
@@ -68,7 +49,7 @@ function FeedVideo({ uri, isActive, isMuted, isPaused }: { uri: string; isActive
             player={player}
             contentFit="cover"
             nativeControls={false}
-            allowsFullscreen={false}
+            fullscreenOptions={{ enable: false }}
             allowsPictureInPicture={false}
         />
     );
@@ -95,10 +76,7 @@ function FeedItem({
 }) {
     const baseMonthlyPrice = toNumeric(item.monthly_price);
     const pricingTiers = normalizePricingTiers(item.pricing_tiers);
-    const lowestTieredPrice =
-        pricingTiers.length > 0
-            ? pricingTiers.reduce((minPrice, tier) => Math.min(minPrice, tier.monthly_price), baseMonthlyPrice)
-            : baseMonthlyPrice;
+    const lowestTieredPrice = getLowestTieredPrice(baseMonthlyPrice, pricingTiers);
     const hasTieredDiscount =
         item.pricing_mode === "tiered" &&
         lowestTieredPrice < baseMonthlyPrice;
@@ -311,22 +289,27 @@ export default function HomeFeedScreen() {
 
     if (loading) {
         return (
-            <View className="flex-1 items-center justify-center bg-black">
-                <ActivityIndicator size="large" color="#FFFFFF" />
-                <Text className="mt-3 text-sm text-white/60">Loading feed...</Text>
-            </View>
+            <LoadingState
+                label="Loading feed..."
+                className="flex-1 bg-black"
+                indicatorColor="#FFFFFF"
+                labelClassName="text-white/60"
+            />
         );
     }
 
     if (error || !products || products.length === 0) {
         return (
-            <View className="flex-1 items-center justify-center bg-black px-6">
-                <MaterialIcons name="explore" size={64} color="#475569" />
-                <Text className="mt-4 text-xl font-bold text-white">No Content Yet</Text>
-                <Text className="mt-2 text-center text-base text-white/50">
-                    {error ? error : "New furniture drops coming soon. Stay tuned!"}
-                </Text>
-            </View>
+            <StatePanel
+                icon="explore"
+                title="No Content Yet"
+                description={error ? error : "New furniture drops coming soon. Stay tuned!"}
+                className="flex-1 bg-black px-6"
+                titleClassName="text-white"
+                descriptionClassName="text-white/50 text-base"
+                iconContainerClassName="bg-gray-900"
+                iconColor="#475569"
+            />
         );
     }
 

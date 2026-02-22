@@ -1,30 +1,11 @@
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useProduct } from "../../hooks/useApi";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, ErrorState, LoadingState, StickyActionBar } from "../../components/ui";
 import { useCart } from "../../contexts/CartContext";
-
-function toNumeric(value: unknown) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatPrice(value: number) {
-    return toNumeric(value).toFixed(2);
-}
-
-function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
-    if (!Array.isArray(input)) return [];
-    return input
-        .map((tier) => ({
-            min_months: Number(tier.min_months),
-            monthly_price: Number(tier.monthly_price),
-        }))
-        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
-        .sort((a, b) => a.min_months - b.min_months);
-}
+import { formatPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
 
 export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,22 +15,19 @@ export default function ProductDetailsScreen() {
 
     if (loading) {
         return (
-            <View className="flex-1 items-center justify-center bg-white">
-                <ActivityIndicator size="large" color="#6B8599" />
-                <Text className="mt-3 text-sm text-slate-400">Loading product...</Text>
-            </View>
+            <LoadingState label="Loading product..." className="flex-1 bg-white" />
         );
     }
 
     if (error || !product) {
         return (
-            <View className="flex-1 items-center justify-center bg-white px-6">
-                <MaterialIcons name="error-outline" size={48} color="#CBD5E1" />
-                <Text className="mt-3 text-base font-semibold text-gray-700">Product Not Found</Text>
-                <TouchableOpacity className="mt-4 rounded-xl bg-primary px-6 py-3" onPress={() => router.back()}>
-                    <Text className="text-sm font-semibold text-white">Go Back</Text>
-                </TouchableOpacity>
-            </View>
+            <ErrorState
+                title="Product Not Found"
+                actionLabel="Go Back"
+                onActionPress={() => router.back()}
+                icon="error-outline"
+                className="flex-1 bg-white"
+            />
         );
     }
 
@@ -178,7 +156,7 @@ export default function ProductDetailsScreen() {
                 </View>
             </ScrollView>
 
-            <View className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-6">
+            <StickyActionBar>
                 <View className="flex-row items-center gap-4">
                     <View>
                         <Text className="text-sm font-medium uppercase text-slate-400">Monthly</Text>
@@ -196,7 +174,7 @@ export default function ProductDetailsScreen() {
                         <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
                     </TouchableOpacity>
                 </View>
-            </View>
+            </StickyActionBar>
         </SafeAreaView>
     );
 }

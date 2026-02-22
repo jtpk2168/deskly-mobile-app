@@ -1,23 +1,11 @@
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, Button, Checkbox, Input, StickyActionBar } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { upsertProfile, useProfile } from "../../hooks/useApi";
-
-function getParamValue(value?: string | string[]) {
-    if (Array.isArray(value)) return value[0] ?? "";
-    return value ?? "";
-}
-
-function toNull(value: string) {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-}
+import { getParamValue, toNull } from "../../lib/ui";
 
 function isDeliverySameAsOfficeAddress(company: {
     address: string | null;
@@ -391,20 +379,12 @@ export default function CompanyDetailsScreen() {
 
                         <View>
                             <Text className="ml-1 text-sm font-medium text-slate-500">Delivery Address</Text>
-                            <TouchableOpacity
+                            <Checkbox
+                                checked={sameAsCompanyAddress}
                                 onPress={() => setSameAsCompanyAddress((previous) => !previous)}
-                                className="mt-2 flex-row items-start"
-                            >
-                                <View
-                                    className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${sameAsCompanyAddress ? "border-primary bg-primary" : "border-gray-300 bg-white"
-                                        }`}
-                                >
-                                    {sameAsCompanyAddress && <MaterialIcons name="check" size={14} color="#FFFFFF" />}
-                                </View>
-                                <Text className="ml-3 flex-1 text-sm font-medium text-slate-600">
-                                    Same as office address
-                                </Text>
-                            </TouchableOpacity>
+                                className="mt-2"
+                                label="Same as office address"
+                            />
 
                             {!sameAsCompanyAddress && (
                                 <>
@@ -465,9 +445,9 @@ export default function CompanyDetailsScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            <View className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white px-6 py-6">
+            <StickyActionBar className="bg-white" extraBottomPadding={0}>
                 <Button label="Finish Setup" onPress={handleFinishSetup} loading={submitting} />
-            </View>
+            </StickyActionBar>
         </SafeAreaView>
     );
 }

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Product, useProducts } from "../../hooks/useApi";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, EmptyState, ErrorState, LoadingState } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
+import { formatPrice, getLowestTieredPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
 
 const categories = ["All", "Desks", "Chairs", "Storage", "Meeting", "Accessories"];
 
@@ -18,26 +19,6 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
 });
-
-function toNumeric(value: unknown) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatPrice(value: number) {
-    return toNumeric(value).toFixed(2);
-}
-
-function normalizePricingTiers(input: { min_months: number; monthly_price: number }[] | null | undefined) {
-    if (!Array.isArray(input)) return [];
-    return input
-        .map((tier) => ({
-            min_months: Number(tier.min_months),
-            monthly_price: Number(tier.monthly_price),
-        }))
-        .filter((tier) => Number.isInteger(tier.min_months) && tier.min_months >= 2 && Number.isFinite(tier.monthly_price) && tier.monthly_price > 0)
-        .sort((a, b) => a.min_months - b.min_months);
-}
 
 export default function CatalogScreen() {
     const [activeCategory, setActiveCategory] = useState("All");
@@ -106,33 +87,21 @@ export default function CatalogScreen() {
                 </ScrollView>
 
                 {loading ? (
-                    <View className="flex-1 items-center justify-center py-20">
-                        <ActivityIndicator size="large" color="#6B8599" />
-                        <Text className="mt-3 text-sm text-slate-400">Loading furniture...</Text>
-                    </View>
+                    <LoadingState label="Loading furniture..." />
                 ) : error ? (
-                    <View className="flex-1 items-center justify-center py-20 px-6">
-                        <MaterialIcons name="wifi-off" size={48} color="#CBD5E1" />
-                        <Text className="mt-3 text-base font-semibold text-gray-700">Connection Error</Text>
-                        <Text className="mt-1 text-sm text-slate-400 text-center">{error}</Text>
-                    </View>
+                    <ErrorState title="Connection Error" description={error} />
                 ) : !products || products.length === 0 ? (
-                    <View className="flex-1 items-center justify-center py-20 px-6">
-                        <MaterialIcons name="inventory-2" size={48} color="#CBD5E1" />
-                        <Text className="mt-3 text-base font-semibold text-gray-700">No Furniture Found</Text>
-                        <Text className="mt-1 text-sm text-slate-400 text-center">
-                            {query ? `No results for "${query}"` : "Check back soon for new arrivals."}
-                        </Text>
-                    </View>
+                    <EmptyState
+                        icon="inventory-2"
+                        title="No Furniture Found"
+                        description={query ? `No results for "${query}"` : "Check back soon for new arrivals."}
+                    />
                 ) : (
                     <View className="flex-row flex-wrap justify-between px-5 pb-2">
                         {products.map((product) => {
                             const baseMonthlyPrice = toNumeric(product.monthly_price);
                             const pricingTiers = normalizePricingTiers(product.pricing_tiers);
-                            const lowestTieredPrice =
-                                pricingTiers.length > 0
-                                    ? pricingTiers.reduce((minPrice, tier) => Math.min(minPrice, tier.monthly_price), baseMonthlyPrice)
-                                    : baseMonthlyPrice;
+                            const lowestTieredPrice = getLowestTieredPrice(baseMonthlyPrice, pricingTiers);
                             const hasTieredDiscount =
                                 product.pricing_mode === "tiered" &&
                                 lowestTieredPrice < baseMonthlyPrice;

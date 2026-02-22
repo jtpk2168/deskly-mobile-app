@@ -2,17 +2,14 @@ import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, EmptyState, PriceSummaryRow, StickyActionBar } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
+import { formatCurrency } from "../../lib/ui";
 
 const DURATION_OPTIONS = [12, 24];
 const SST_RATE = 0.08;
 const SST_RATE_PERCENT_LABEL = `${(SST_RATE * 100).toFixed(0)}%`;
-
-function formatCurrency(value: number) {
-    return `RM ${value.toFixed(2)}`;
-}
 
 export default function PlanScreen() {
     const { contentPaddingBottom, floatingBottom } = useTabBarSpacing({ contentExtra: 140 });
@@ -55,21 +52,13 @@ export default function PlanScreen() {
 
             <ScrollView className="flex-1 px-5 py-7" contentContainerStyle={{ paddingBottom: contentPaddingBottom }} showsVerticalScrollIndicator={false}>
                 {items.length === 0 ? (
-                    <View className="items-center justify-center py-16 px-4">
-                        <View className="h-20 w-20 items-center justify-center rounded-full bg-white mb-4">
-                            <MaterialIcons name="shopping-cart" size={40} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-lg font-bold text-gray-900 mb-2">Your Cart is Empty</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">
-                            Browse our catalog and add furniture to build your custom rental plan.
-                        </Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={() => router.push("/(tabs)/catalog")}
-                        >
-                            <Text className="text-sm font-semibold text-white">Browse Catalog</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <EmptyState
+                        icon="shopping-cart"
+                        title="Your Cart is Empty"
+                        description="Browse our catalog and add furniture to build your custom rental plan."
+                        actionLabel="Browse Catalog"
+                        onActionPress={() => router.push("/(tabs)/catalog")}
+                    />
                 ) : (
                     <>
                         <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
@@ -194,40 +183,25 @@ export default function PlanScreen() {
                         </View>
 
                         <View className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-600">Monthly Subtotal</Text>
-                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlyTotal)} /mo</Text>
-                            </View>
+                            <PriceSummaryRow label="Monthly Subtotal" value={`${formatCurrency(monthlyTotal)} /mo`} valueTone="strong" />
                         </View>
 
                         <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-600">SST ({SST_RATE_PERCENT_LABEL})</Text>
-                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlySst)} /mo</Text>
-                            </View>
+                            <PriceSummaryRow label={`SST (${SST_RATE_PERCENT_LABEL})`} value={`${formatCurrency(monthlySst)} /mo`} valueTone="strong" />
                         </View>
 
                         <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm font-semibold text-gray-900">Estimated Monthly Total</Text>
-                                <Text className="text-sm font-bold text-primary">{formatCurrency(monthlyTotalWithSst)} /mo</Text>
-                            </View>
+                            <PriceSummaryRow label="Estimated Monthly Total" value={`${formatCurrency(monthlyTotalWithSst)} /mo`} valueTone="primary" />
                         </View>
 
                         <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-600">Estimated Contract Value</Text>
-                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(contractTotal)}</Text>
-                            </View>
+                            <PriceSummaryRow label="Estimated Contract Value" value={formatCurrency(contractTotal)} valueTone="strong" />
                         </View>
                     </View>
                 )}
             </ScrollView>
 
-            <View
-                className="absolute left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-5"
-                style={{ bottom: floatingBottom }}
-            >
+            <StickyActionBar bottomOffset={floatingBottom}>
                 <TouchableOpacity
                     className={`flex-row items-center justify-center rounded-xl py-4 ${itemCount > 0 ? "bg-primary" : "bg-gray-200"}`}
                     disabled={itemCount === 0}
@@ -241,7 +215,7 @@ export default function PlanScreen() {
                         <Text className="text-sm font-medium text-slate-400">Clear Plan</Text>
                     </TouchableOpacity>
                 )}
-            </View>
+            </StickyActionBar>
         </SafeAreaView>
     );
 }

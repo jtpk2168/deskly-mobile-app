@@ -1,22 +1,21 @@
-import { ActivityIndicator, Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, ErrorState, LoadingState, PriceSummaryRow, StatusPill } from "../../components/ui";
 import { useSubscription } from "../../hooks/useApi";
+import {
+    formatBillingStatusLabel,
+    formatCurrency,
+    formatCurrencyWithCode,
+    formatStatusLabel,
+    hasText,
+    invoiceBadgeClassName,
+    invoiceTextClassName,
+    normalizeBillingStatus,
+} from "../../lib/ui";
 
 const DEFAULT_SST_RATE_PERCENT = 8;
-
-function formatCurrency(value: number | null) {
-    if (value == null) return "RM —";
-    return `RM ${Number(value).toFixed(2)}`;
-}
-
-function formatCurrencyWithCode(value: number | null, currency: string | null | undefined) {
-    if (value == null) return "—";
-    const normalizedCurrency = (currency ?? "myr").trim().toUpperCase();
-    return `${normalizedCurrency} ${Number(value).toFixed(2)}`;
-}
 
 function formatDate(value: string | null) {
     if (!value) return "—";
@@ -27,68 +26,6 @@ function formatDate(value: string | null) {
         month: "short",
         year: "numeric",
     });
-}
-
-function formatStatusLabel(status: string) {
-    return status
-        .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
-}
-
-function normalizeBillingStatus(value: string | null | undefined) {
-    const normalized = (value ?? "pending_payment").trim().toLowerCase();
-    if (!normalized) return "pending_payment";
-    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
-    return normalized;
-}
-
-function statusBadgeClassName(status: string) {
-    const normalizedStatus = normalizeBillingStatus(status);
-    if (normalizedStatus === "active") return "bg-green-100";
-    if (normalizedStatus === "pending_payment") return "bg-amber-100";
-    if (normalizedStatus === "payment_failed") return "bg-rose-100";
-    if (normalizedStatus === "cancelled") return "bg-red-100";
-    if (normalizedStatus === "completed") return "bg-blue-100";
-    return "bg-gray-100";
-}
-
-function statusTextClassName(status: string) {
-    const normalizedStatus = normalizeBillingStatus(status);
-    if (normalizedStatus === "active") return "text-green-700";
-    if (normalizedStatus === "pending_payment") return "text-amber-700";
-    if (normalizedStatus === "payment_failed") return "text-rose-700";
-    if (normalizedStatus === "cancelled") return "text-red-700";
-    if (normalizedStatus === "completed") return "text-blue-700";
-    return "text-gray-600";
-}
-
-function statusDotClassName(status: string) {
-    const normalizedStatus = normalizeBillingStatus(status);
-    if (normalizedStatus === "active") return "bg-green-500";
-    if (normalizedStatus === "pending_payment") return "bg-amber-500";
-    if (normalizedStatus === "payment_failed") return "bg-rose-500";
-    if (normalizedStatus === "cancelled") return "bg-red-500";
-    if (normalizedStatus === "completed") return "bg-blue-500";
-    return "bg-gray-400";
-}
-
-function invoiceBadgeClassName(status: string) {
-    if (status === "paid") return "bg-green-100";
-    if (status === "open") return "bg-amber-100";
-    if (status === "draft") return "bg-slate-100";
-    if (status === "payment_failed") return "bg-rose-100";
-    if (status === "void" || status === "uncollectible") return "bg-red-100";
-    return "bg-gray-100";
-}
-
-function invoiceTextClassName(status: string) {
-    if (status === "paid") return "text-green-700";
-    if (status === "open") return "text-amber-700";
-    if (status === "draft") return "text-slate-700";
-    if (status === "payment_failed") return "text-rose-700";
-    if (status === "void" || status === "uncollectible") return "text-red-700";
-    return "text-gray-600";
 }
 
 function parsePositiveInteger(value: number | null | undefined) {
@@ -102,10 +39,6 @@ function normalizeMoney(value: unknown) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return null;
     return Number(parsed.toFixed(2));
-}
-
-function hasText(value: string | null | undefined): value is string {
-    return typeof value === "string" && value.trim().length > 0;
 }
 
 function composeAddress(
@@ -127,9 +60,8 @@ function composeAddress(
 
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
-        <View className="flex-row items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-            <Text className="text-sm font-medium text-slate-500">{label}</Text>
-            <Text className="text-sm font-semibold text-gray-900">{value}</Text>
+        <View className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+            <PriceSummaryRow label={label} value={value} valueTone="strong" />
         </View>
     );
 }
@@ -185,13 +117,13 @@ export default function RentalOrderDetailsScreen() {
         return (
             <SafeAreaView className="flex-1 bg-gray-100" edges={["top", "left", "right"]}>
                 <AppTopBar title="Order Details" onBackPress={() => router.back()} />
-                <View className="flex-1 items-center justify-center px-6">
-                    <MaterialIcons name="error-outline" size={48} color="#CBD5E1" />
-                    <Text className="mt-3 text-base font-semibold text-gray-700">Invalid Order</Text>
-                    <TouchableOpacity className="mt-4 rounded-xl bg-primary px-6 py-3" onPress={() => router.push("/(tabs)/rentals")}>
-                        <Text className="text-sm font-semibold text-white">Back to My Rentals</Text>
-                    </TouchableOpacity>
-                </View>
+                <ErrorState
+                    title="Invalid Order"
+                    icon="error-outline"
+                    actionLabel="Back to My Rentals"
+                    onActionPress={() => router.push("/(tabs)/rentals")}
+                    className="flex-1"
+                />
             </SafeAreaView>
         );
     }
@@ -201,19 +133,15 @@ export default function RentalOrderDetailsScreen() {
             <AppTopBar title="Order Details" onBackPress={() => router.back()} />
 
             {loading ? (
-                <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#6B8599" />
-                    <Text className="mt-3 text-sm text-slate-400">Loading order details...</Text>
-                </View>
+                <LoadingState label="Loading order details..." className="flex-1" />
             ) : error || !subscription ? (
-                <View className="flex-1 items-center justify-center px-6">
-                    <MaterialIcons name="wifi-off" size={48} color="#CBD5E1" />
-                    <Text className="mt-3 text-base font-semibold text-gray-700">Unable to Load Order</Text>
-                    <Text className="mt-1 text-center text-sm text-slate-400">{error ?? "Order not found"}</Text>
-                    <TouchableOpacity className="mt-4 rounded-xl bg-primary px-6 py-3" onPress={() => void refetch()}>
-                        <Text className="text-sm font-semibold text-white">Try Again</Text>
-                    </TouchableOpacity>
-                </View>
+                <ErrorState
+                    title="Unable to Load Order"
+                    description={error ?? "Order not found"}
+                    actionLabel="Try Again"
+                    onActionPress={() => void refetch()}
+                    className="flex-1"
+                />
             ) : (
                 <ScrollView className="flex-1 px-6 py-7" contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
                     <View className="rounded-2xl border border-gray-100 bg-white p-5">
@@ -226,12 +154,7 @@ export default function RentalOrderDetailsScreen() {
                                     ID: #{subscription.id.substring(0, 8).toUpperCase()}
                                 </Text>
                             </View>
-                            <View className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(subscriptionStatus)}`}>
-                                <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(subscriptionStatus)}`} />
-                                <Text className={`text-sm font-semibold uppercase ${statusTextClassName(subscriptionStatus)}`}>
-                                    {formatStatusLabel(subscriptionStatus)}
-                                </Text>
-                            </View>
+                            <StatusPill status={subscriptionStatus} />
                         </View>
 
                         {subscription.bundles?.description ? (
@@ -247,7 +170,7 @@ export default function RentalOrderDetailsScreen() {
                             <DetailRow label={`Tax (SST ${sstRateLabel})`} value={formatCurrency(resolvedTax)} />
                             <DetailRow label="Monthly Total" value={formatCurrency(monthlyTotal)} />
                             <DetailRow label="Items in Order" value={String(totalItemCount)} />
-                            <DetailRow label="Order Status" value={formatStatusLabel(subscriptionStatus)} />
+                            <DetailRow label="Order Status" value={formatBillingStatusLabel(subscriptionStatus)} />
                             <DetailRow label="Start Date" value={formatDate(subscription.start_date)} />
                             <DetailRow label="Commitment End" value={formatDate(subscription.end_date)} />
                             <DetailRow label="Created On" value={formatDate(subscription.created_at)} />

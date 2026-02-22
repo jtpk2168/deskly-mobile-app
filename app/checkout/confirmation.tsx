@@ -2,18 +2,10 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, PriceSummaryRow, StatusPill } from "../../components/ui";
+import { formatCurrency, normalizeBillingStatus, toNumeric } from "../../lib/ui";
 
 const DEFAULT_SST_RATE_PERCENT = 8;
-
-function toNumeric(value: unknown) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatCurrency(value: number) {
-    return `RM ${value.toFixed(2)}`;
-}
 
 function formatDate(value: string | undefined) {
     if (!value) return "—";
@@ -24,47 +16,6 @@ function formatDate(value: string | undefined) {
         month: "short",
         year: "numeric",
     });
-}
-
-function normalizeStatus(value: string | undefined) {
-    const normalized = (value ?? "pending_payment").trim().toLowerCase();
-    if (!normalized) return "pending_payment";
-    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
-    return normalized;
-}
-
-function formatStatusLabel(status: string) {
-    return status
-        .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
-}
-
-function statusBadgeClassName(status: string) {
-    if (status === "active") return "bg-green-100";
-    if (status === "pending_payment") return "bg-amber-100";
-    if (status === "payment_failed") return "bg-rose-100";
-    if (status === "cancelled") return "bg-red-100";
-    if (status === "completed") return "bg-blue-100";
-    return "bg-gray-100";
-}
-
-function statusTextClassName(status: string) {
-    if (status === "active") return "text-green-700";
-    if (status === "pending_payment") return "text-amber-700";
-    if (status === "payment_failed") return "text-rose-700";
-    if (status === "cancelled") return "text-red-700";
-    if (status === "completed") return "text-blue-700";
-    return "text-gray-600";
-}
-
-function statusDotClassName(status: string) {
-    if (status === "active") return "bg-green-500";
-    if (status === "pending_payment") return "bg-amber-500";
-    if (status === "payment_failed") return "bg-rose-500";
-    if (status === "cancelled") return "bg-red-500";
-    if (status === "completed") return "bg-blue-500";
-    return "bg-gray-400";
 }
 
 export default function OrderConfirmationScreen() {
@@ -110,7 +61,7 @@ export default function OrderConfirmationScreen() {
         ? `${effectiveSstRatePercent.toFixed(0)}%`
         : `${effectiveSstRatePercent.toFixed(2)}%`;
     const orderCode = orderId ? `#${orderId.substring(0, 8).toUpperCase()}` : "—";
-    const orderStatus = normalizeStatus(status);
+    const orderStatus = normalizeBillingStatus(status);
 
     return (
         <SafeAreaView className="flex-1 bg-background-light dark:bg-background-dark">
@@ -136,14 +87,8 @@ export default function OrderConfirmationScreen() {
                                 <Text className="text-sm text-gray-500 dark:text-gray-400">/mo</Text>
                             </View>
                             <View className="mt-3 w-full rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                                <View className="flex-row items-center justify-between">
-                                    <Text className="text-xs text-slate-500">Subtotal</Text>
-                                    <Text className="text-xs font-semibold text-gray-900">{formatCurrency(monthlySubtotalValue)}</Text>
-                                </View>
-                                <View className="mt-1 flex-row items-center justify-between">
-                                    <Text className="text-xs text-slate-500">SST ({sstRateLabel})</Text>
-                                    <Text className="text-xs font-semibold text-gray-900">{formatCurrency(monthlySstValue)}</Text>
-                                </View>
+                                <PriceSummaryRow label="Subtotal" value={formatCurrency(monthlySubtotalValue)} valueTone="strong" />
+                                <PriceSummaryRow className="mt-1" label={`SST (${sstRateLabel})`} value={formatCurrency(monthlySstValue)} valueTone="strong" />
                             </View>
                             <Text className="mt-2 text-sm text-slate-500">{productName ?? "Furniture Rental"}</Text>
                         </View>
@@ -166,12 +111,7 @@ export default function OrderConfirmationScreen() {
                                     </View>
                                     <Text className="text-base text-gray-600 dark:text-gray-300">Order Status</Text>
                                 </View>
-                                <View className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(orderStatus)}`}>
-                                    <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(orderStatus)}`} />
-                                    <Text className={`text-sm font-semibold ${statusTextClassName(orderStatus)}`}>
-                                        {formatStatusLabel(orderStatus)}
-                                    </Text>
-                                </View>
+                                <StatusPill status={orderStatus} uppercase={false} />
                             </View>
 
                             <View className="flex-row justify-between items-center">

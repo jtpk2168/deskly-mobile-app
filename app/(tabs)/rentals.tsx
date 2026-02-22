@@ -1,59 +1,21 @@
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useSubscriptions } from "../../hooks/useApi";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import {
+    AppTopBar,
+    AuthRequiredState,
+    EmptyState,
+    ErrorState,
+    LoadingState,
+    StatusPill,
+} from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useAuth } from "../../contexts/AuthContext";
-
-function formatCurrency(value: number | null) {
-    if (value == null) return "RM —";
-    return `RM ${Number(value).toFixed(2)}`;
-}
-
-function formatStatusLabel(status: string) {
-    return status
-        .split("_")
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(" ");
-}
-
-function normalizeBillingStatus(value: string | null | undefined) {
-    const normalized = (value ?? "pending_payment").trim().toLowerCase();
-    if (!normalized) return "pending_payment";
-    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
-    return normalized;
-}
-
-function statusBadgeClassName(status: string) {
-    if (status === "active") return "bg-green-100";
-    if (status === "pending_payment") return "bg-amber-100";
-    if (status === "payment_failed") return "bg-rose-100";
-    if (status === "cancelled") return "bg-red-100";
-    if (status === "completed") return "bg-blue-100";
-    return "bg-gray-100";
-}
-
-function statusDotClassName(status: string) {
-    if (status === "active") return "bg-green-500";
-    if (status === "pending_payment") return "bg-amber-500";
-    if (status === "payment_failed") return "bg-rose-500";
-    if (status === "cancelled") return "bg-red-500";
-    if (status === "completed") return "bg-blue-500";
-    return "bg-gray-400";
-}
-
-function statusTextClassName(status: string) {
-    if (status === "active") return "text-green-700";
-    if (status === "pending_payment") return "text-amber-700";
-    if (status === "payment_failed") return "text-rose-700";
-    if (status === "cancelled") return "text-red-700";
-    if (status === "completed") return "text-blue-700";
-    return "text-gray-500";
-}
+import { formatCurrency } from "../../lib/ui";
 
 export default function RentalsScreen() {
     const { user, isLoading: authLoading } = useAuth();
@@ -79,52 +41,25 @@ export default function RentalsScreen() {
                 </View>
 
                 {authLoading || loading ? (
-                    <View className="items-center justify-center py-20">
-                        <ActivityIndicator size="large" color="#6B8599" />
-                        <Text className="mt-3 text-sm text-slate-400">Loading rentals...</Text>
-                    </View>
+                    <LoadingState label="Loading rentals..." />
                 ) : !user ? (
-                    <View className="items-center justify-center py-16 px-4">
-                        <View className="h-20 w-20 items-center justify-center rounded-full bg-white mb-4">
-                            <MaterialIcons name="lock-outline" size={40} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-lg font-bold text-gray-900 mb-2">Sign In Required</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">
-                            Sign in to view and manage your active rentals.
-                        </Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={() => router.push("/(auth)/login")}
-                        >
-                            <Text className="text-sm font-semibold text-white">Go to Login</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <AuthRequiredState
+                        description="Sign in to view and manage your active rentals."
+                        onActionPress={() => router.push("/(auth)/login")}
+                    />
                 ) : error ? (
-                    <View className="items-center justify-center py-16 px-4">
-                        <MaterialIcons name="wifi-off" size={48} color="#CBD5E1" />
-                        <Text className="mt-3 text-base font-semibold text-gray-700">Connection Error</Text>
-                        <Text className="mt-1 text-sm text-slate-400 text-center">{error}</Text>
-                    </View>
+                    <ErrorState title="Connection Error" description={error} />
                 ) : !subscriptions || subscriptions.length === 0 ? (
-                    <View className="items-center justify-center py-16 px-4">
-                        <View className="h-20 w-20 items-center justify-center rounded-full bg-white mb-4">
-                            <MaterialIcons name="event-seat" size={40} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-lg font-bold text-gray-900 mb-2">No Active Rentals</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">
-                            Browse our catalog to find the perfect furniture for your workspace.
-                        </Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={() => router.push("/(tabs)/catalog")}
-                        >
-                            <Text className="text-sm font-semibold text-white">Browse Catalog</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <EmptyState
+                        icon="event-seat"
+                        title="No Active Rentals"
+                        description="Browse our catalog to find the perfect furniture for your workspace."
+                        actionLabel="Browse Catalog"
+                        onActionPress={() => router.push("/(tabs)/catalog")}
+                    />
                 ) : (
                     <>
                         {subscriptions.map((sub) => {
-                            const normalizedStatus = normalizeBillingStatus(sub.status);
                             return (
                                 <TouchableOpacity
                                     key={sub.id}
@@ -138,12 +73,7 @@ export default function RentalsScreen() {
                                     }
                                 >
                                 <View className="absolute right-5 top-5 flex-row items-center">
-                                    <View className={`flex-row items-center rounded-full px-2 py-0.5 ${statusBadgeClassName(normalizedStatus)}`}>
-                                        <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(normalizedStatus)}`} />
-                                        <Text className={`text-xs font-bold uppercase ${statusTextClassName(normalizedStatus)}`}>
-                                            {formatStatusLabel(normalizedStatus)}
-                                        </Text>
-                                    </View>
+                                    <StatusPill status={sub.status} className="py-0.5" />
                                     <MaterialIcons name="chevron-right" size={18} color="#94A3B8" style={{ marginLeft: 6 }} />
                                 </View>
 

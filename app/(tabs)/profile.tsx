@@ -1,11 +1,11 @@
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useProfile } from "../../hooks/useApi";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, AuthRequiredState, Button, Divider, EmptyState, ErrorState, LoadingState } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -62,56 +62,27 @@ export default function ProfileScreen() {
 
             <ScrollView className="flex-1 px-6 pt-2 pb-7" contentContainerStyle={{ paddingBottom: contentPaddingBottom }} showsVerticalScrollIndicator={false}>
                 {authLoading || loading ? (
-                    <View className="flex-1 items-center justify-center py-20">
-                        <ActivityIndicator size="large" color="#6B8599" />
-                        <Text className="mt-3 text-sm text-slate-400">Loading profile...</Text>
-                    </View>
+                    <LoadingState label="Loading profile..." />
                 ) : !user ? (
-                    <View className="items-center py-16 px-4">
-                        <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 mb-4">
-                            <MaterialIcons name="lock-outline" size={48} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-xl font-bold text-gray-900 mb-2">Sign In Required</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">
-                            Sign in to manage your personal and company profile details.
-                        </Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={() => router.push("/(auth)/login")}
-                        >
-                            <Text className="text-sm font-semibold text-white">Go to Login</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <AuthRequiredState
+                        description="Sign in to manage your personal and company profile details."
+                        onActionPress={() => router.push("/(auth)/login")}
+                    />
                 ) : error && !isProfileMissing ? (
-                    <View className="items-center py-16 px-4">
-                        <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 mb-4">
-                            <MaterialIcons name="wifi-off" size={48} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-xl font-bold text-gray-900 mb-2">Couldn&apos;t Load Profile</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">{error}</Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={() => void refetch()}
-                        >
-                            <Text className="text-sm font-semibold text-white">Try Again</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <ErrorState
+                        title="Couldn't Load Profile"
+                        description={error}
+                        actionLabel="Try Again"
+                        onActionPress={() => void refetch()}
+                    />
                 ) : isProfileMissing ? (
-                    <View className="items-center py-16 px-4">
-                        <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 mb-4">
-                            <MaterialIcons name="person-outline" size={48} color="#CBD5E1" />
-                        </View>
-                        <Text className="text-xl font-bold text-gray-900 mb-2">No Profile Yet</Text>
-                        <Text className="text-sm text-slate-400 text-center mb-6">
-                            Complete your profile setup to unlock full access to the catalog.
-                        </Text>
-                        <TouchableOpacity
-                            className="rounded-xl bg-primary px-8 py-3.5"
-                            onPress={handleOpenProfileSetup}
-                        >
-                            <Text className="text-sm font-semibold text-white">Complete Profile</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <EmptyState
+                        icon="person-outline"
+                        title="No Profile Yet"
+                        description="Complete your profile setup to unlock full access to the catalog."
+                        actionLabel="Complete Profile"
+                        onActionPress={handleOpenProfileSetup}
+                    />
                 ) : (
                     <>
                         <View className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white">
@@ -162,9 +133,12 @@ export default function ProfileScreen() {
                             </View>
                         )}
 
-                        <TouchableOpacity className="mt-6 rounded-xl border border-primary py-4" onPress={handleOpenProfileSetup}>
-                            <Text className="text-center text-base font-semibold text-primary">Edit Profile</Text>
-                        </TouchableOpacity>
+                        <Button
+                            label="Edit Profile"
+                            variant="outline"
+                            className="mt-6"
+                            onPress={handleOpenProfileSetup}
+                        />
 
                         <TouchableOpacity onPress={handleLogout} className="mt-3 py-3">
                             <Text className="text-center text-base font-semibold text-red-400">Log Out</Text>
@@ -183,8 +157,4 @@ function Field({ label, value }: { label: string; value: string }) {
             <Text className="text-[17px] font-semibold text-gray-900">{value}</Text>
         </View>
     );
-}
-
-function Divider() {
-    return <View className="h-px bg-gray-100" />;
 }

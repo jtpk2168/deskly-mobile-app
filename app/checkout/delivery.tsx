@@ -1,14 +1,15 @@
 import { Alert, Linking, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as ExpoLinking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
-import { AppTopBar } from "../../components/ui/AppTopBar";
+import { AppTopBar, Checkbox, PriceSummaryRow, StickyActionBar } from "../../components/ui";
 import { startBillingCheckout, useProfile, type Profile } from "../../hooks/useApi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
+import { formatCurrency, hasText, normalizeBillingStatus, toNumeric } from "../../lib/ui";
 
 const SST_RATE = 0.08;
 const SST_RATE_PERCENT_LABEL = `${(SST_RATE * 100).toFixed(0)}%`;
@@ -21,15 +22,6 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
     },
 });
-
-function toNumeric(value: unknown) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatCurrency(value: number) {
-    return `RM ${value.toFixed(2)}`;
-}
 
 function formatDayLabel(date: Date, offset: number) {
     if (offset === 0) return "Today";
@@ -59,10 +51,6 @@ function formatDeliveryOptionLabel(option: { day: string; date: string; month: s
     return `${option.day}, ${option.month} ${option.date}`;
 }
 
-function hasText(value: string | null | undefined) {
-    return typeof value === "string" && value.trim().length > 0;
-}
-
 function createCheckoutIdempotencyKey(userId: string) {
     const randomPart = Math.random().toString(36).slice(2, 12);
     return `mob_${userId.slice(0, 8)}_${Date.now().toString(36)}_${randomPart}`;
@@ -79,13 +67,6 @@ function appendQueryParams(url: string, query: Record<string, string>) {
 function readQueryParam(value: string | string[] | undefined) {
     if (Array.isArray(value)) return value[0] ?? null;
     return value ?? null;
-}
-
-function normalizeBillingStatus(value: string | null | undefined) {
-    const normalized = (value ?? "pending_payment").trim().toLowerCase();
-    if (!normalized) return "pending_payment";
-    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
-    return normalized;
 }
 
 function getMissingProfileFields(profile: Profile | null, businessEmail?: string | null) {
@@ -133,7 +114,6 @@ function getMissingProfileFields(profile: Profile | null, businessEmail?: string
 }
 
 export default function DeliveryCheckoutScreen() {
-    const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { data: profile, loading: profileLoading } = useProfile(user?.id);
     const { items: cartItems, cartDurationMonths, clearCart } = useCart();
@@ -484,22 +464,17 @@ export default function DeliveryCheckoutScreen() {
                         <MaterialIcons name="location-on" size={20} color="#6B8599" />
                         <Text className="ml-2 text-base font-bold text-gray-900">Shipping Address</Text>
                     </View>
-                    <TouchableOpacity onPress={handleToggleUseDefaultDeliveryAddress} className="mb-4 flex-row items-start rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                        <View
-                            className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${useDefaultDeliveryAddress ? "border-primary bg-primary" : "border-gray-300 bg-white"
-                                }`}
-                        >
-                            {useDefaultDeliveryAddress && <MaterialIcons name="check" size={14} color="white" />}
-                        </View>
-                        <View className="ml-3 flex-1">
-                            <Text className="text-sm font-semibold text-gray-900">Use Default Delivery Address</Text>
-                            <Text className="mt-0.5 text-xs text-slate-500">
-                                {profileLoading
-                                    ? "Loading your saved delivery address..."
-                                    : "Use the delivery address from your profile. Uncheck to enter a one-time address for this order."}
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
+                    <Checkbox
+                        checked={useDefaultDeliveryAddress}
+                        onPress={handleToggleUseDefaultDeliveryAddress}
+                        className="mb-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3"
+                        label="Use Default Delivery Address"
+                        description={
+                            profileLoading
+                                ? "Loading your saved delivery address..."
+                                : "Use the delivery address from your profile. Uncheck to enter a one-time address for this order."
+                        }
+                    />
                     <View className="gap-4">
                         <View>
                             <Text className="mb-1 text-sm font-medium text-slate-600">Company Name</Text>
@@ -636,20 +611,12 @@ export default function DeliveryCheckoutScreen() {
                 </View>
 
                 <View className="mb-6 rounded-2xl border border-gray-100 bg-white p-4">
-                    <View className="flex-row items-start">
-                        <TouchableOpacity
-                            onPress={() => setTermsAccepted(!termsAccepted)}
-                            className={`mt-0.5 h-5 w-5 items-center justify-center rounded border ${termsAccepted ? "border-primary bg-primary" : "border-gray-300 bg-white"}`}
-                        >
-                            {termsAccepted && <MaterialIcons name="check" size={14} color="white" />}
-                        </TouchableOpacity>
-                        <View className="ml-3 flex-1">
-                            <Text className="text-sm font-semibold text-gray-900">Rental Agreement</Text>
-                            <Text className="text-sm text-slate-500">
-                                I agree to the <Text className="text-primary">Terms of Service</Text> and <Text className="text-primary">Rental Policy</Text> for office equipment rentals.
-                            </Text>
-                        </View>
-                    </View>
+                    <Checkbox
+                        checked={termsAccepted}
+                        onPress={() => setTermsAccepted(!termsAccepted)}
+                        label="Rental Agreement"
+                        description="I agree to the Terms of Service and Rental Policy for office equipment rentals."
+                    />
                 </View>
 
                 {!profileLoading && !!user && missingProfileFields.length > 0 && (
@@ -665,9 +632,7 @@ export default function DeliveryCheckoutScreen() {
                 )}
             </ScrollView>
 
-            <View
-                className="absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-5"
-                style={{ paddingBottom: Math.max(14, insets.bottom + 8) }}
+            <StickyActionBar
                 onLayout={(event) => {
                     const measuredHeight = Math.ceil(event.nativeEvent.layout.height);
                     if (measuredHeight > 0 && measuredHeight !== checkoutFooterHeight) {
@@ -682,14 +647,8 @@ export default function DeliveryCheckoutScreen() {
                             One order = one duration. For different durations, place a separate order.
                         </Text>
                         <View className="mt-2 gap-1.5">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-500">Subtotal</Text>
-                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlySubtotalValue)}</Text>
-                            </View>
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-slate-500">SST ({SST_RATE_PERCENT_LABEL})</Text>
-                                <Text className="text-sm font-semibold text-gray-900">{formatCurrency(monthlySstValue)}</Text>
-                            </View>
+                            <PriceSummaryRow label="Subtotal" value={formatCurrency(monthlySubtotalValue)} valueTone="strong" />
+                            <PriceSummaryRow label={`SST (${SST_RATE_PERCENT_LABEL})`} value={formatCurrency(monthlySstValue)} valueTone="strong" />
                             <View className="mt-1 flex-row items-baseline justify-between border-t border-gray-200 pt-1.5">
                                 <Text className="text-sm font-semibold text-gray-900">Estimated Monthly Total</Text>
                                 <View className="flex-row items-baseline">
@@ -720,7 +679,7 @@ export default function DeliveryCheckoutScreen() {
                     </Text>
                     <MaterialIcons name="arrow-forward" size={18} color="white" style={{ marginLeft: 6 }} />
                 </TouchableOpacity>
-            </View>
+            </StickyActionBar>
         </SafeAreaView>
     );
 }

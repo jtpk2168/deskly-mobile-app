@@ -4,8 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { Input } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
+import { Button, Divider, Input } from "../../components/ui";
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -108,7 +107,7 @@ export default function LoginScreen() {
 
                             <View className="relative my-6">
                                 <View className="absolute inset-0 justify-center">
-                                    <View className="border-t border-gray-100" />
+                                    <Divider />
                                 </View>
                                 <View className="items-center">
                                     <Text className="bg-white px-2 text-sm font-medium uppercase tracking-wider text-slate-400">Or</Text>
