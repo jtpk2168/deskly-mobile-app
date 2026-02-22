@@ -8,37 +8,23 @@ import {
     formatBillingStatusLabel,
     formatCurrency,
     formatCurrencyWithCode,
+    formatDateDisplay,
+    formatPercentLabel,
     formatStatusLabel,
     hasText,
     invoiceBadgeClassName,
     invoiceTextClassName,
     normalizeBillingStatus,
+    toMoney,
+    toNullableMoney,
 } from "../../lib/ui";
 
 const DEFAULT_SST_RATE_PERCENT = 8;
-
-function formatDate(value: string | null) {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-MY", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
-}
 
 function parsePositiveInteger(value: number | null | undefined) {
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed <= 0) return 0;
     return parsed;
-}
-
-function normalizeMoney(value: unknown) {
-    if (value == null) return null;
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return null;
-    return Number(parsed.toFixed(2));
 }
 
 function composeAddress(
@@ -83,21 +69,19 @@ export default function RentalOrderDetailsScreen() {
     const deliveryContact = deliveryContactName && deliveryContactPhone
         ? `${deliveryContactName} • ${deliveryContactPhone}`
         : deliveryContactName ?? deliveryContactPhone;
-    const monthlyTotal = normalizeMoney(subscription?.monthly_total);
-    const explicitSubtotal = normalizeMoney(subscription?.subtotal_amount);
-    const explicitTax = normalizeMoney(subscription?.tax_amount);
+    const monthlyTotal = toNullableMoney(subscription?.monthly_total);
+    const explicitSubtotal = toNullableMoney(subscription?.subtotal_amount);
+    const explicitTax = toNullableMoney(subscription?.tax_amount);
     const derivedTax = explicitSubtotal != null && monthlyTotal != null
-        ? normalizeMoney(monthlyTotal - explicitSubtotal)
+        ? toMoney(monthlyTotal - explicitSubtotal)
         : null;
     const resolvedTax = explicitTax ?? (derivedTax != null && derivedTax >= 0 ? derivedTax : null);
     const resolvedSubtotal = explicitSubtotal
-        ?? (resolvedTax != null && monthlyTotal != null ? normalizeMoney(monthlyTotal - resolvedTax) : null);
+        ?? (resolvedTax != null && monthlyTotal != null ? toMoney(monthlyTotal - resolvedTax) : null);
     const computedSstRatePercent = resolvedSubtotal != null && resolvedSubtotal > 0 && resolvedTax != null
-        ? Number(((resolvedTax / resolvedSubtotal) * 100).toFixed(2))
+        ? toMoney((resolvedTax / resolvedSubtotal) * 100)
         : DEFAULT_SST_RATE_PERCENT;
-    const sstRateLabel = Number.isInteger(computedSstRatePercent)
-        ? `${computedSstRatePercent.toFixed(0)}%`
-        : `${computedSstRatePercent.toFixed(2)}%`;
+    const sstRateLabel = formatPercentLabel(computedSstRatePercent);
     const subscriptionStatus = normalizeBillingStatus(subscription?.status);
 
     const handleOpenInvoice = async (url: string | null) => {
@@ -171,9 +155,9 @@ export default function RentalOrderDetailsScreen() {
                             <DetailRow label="Monthly Total" value={formatCurrency(monthlyTotal)} />
                             <DetailRow label="Items in Order" value={String(totalItemCount)} />
                             <DetailRow label="Order Status" value={formatBillingStatusLabel(subscriptionStatus)} />
-                            <DetailRow label="Start Date" value={formatDate(subscription.start_date)} />
-                            <DetailRow label="Commitment End" value={formatDate(subscription.end_date)} />
-                            <DetailRow label="Created On" value={formatDate(subscription.created_at)} />
+                            <DetailRow label="Start Date" value={formatDateDisplay(subscription.start_date)} />
+                            <DetailRow label="Commitment End" value={formatDateDisplay(subscription.end_date)} />
+                            <DetailRow label="Created On" value={formatDateDisplay(subscription.created_at)} />
                         </View>
 
                         {deliveryAddress && (
@@ -207,10 +191,10 @@ export default function RentalOrderDetailsScreen() {
                                                     <View className="flex-1">
                                                         <Text className="text-sm font-semibold text-gray-900">{invoiceCode}</Text>
                                                         <Text className="mt-1 text-xs text-slate-500">
-                                                            Period: {formatDate(invoice.period_start_at)} - {formatDate(invoice.period_end_at)}
+                                                            Period: {formatDateDisplay(invoice.period_start_at)} - {formatDateDisplay(invoice.period_end_at)}
                                                         </Text>
                                                         <Text className="mt-1 text-xs text-slate-500">
-                                                            Due: {formatDate(invoice.due_date)}
+                                                            Due: {formatDateDisplay(invoice.due_date)}
                                                         </Text>
                                                     </View>
                                                     <View className={`rounded-full px-2 py-1 ${invoiceBadgeClassName(invoice.status)}`}>

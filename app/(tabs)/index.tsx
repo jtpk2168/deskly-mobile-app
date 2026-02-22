@@ -3,6 +3,8 @@ import {
     Dimensions,
     FlatList,
     Image,
+    NativeScrollEvent,
+    NativeSyntheticEvent,
     Text,
     TouchableOpacity,
     Pressable,
@@ -18,7 +20,7 @@ import { VideoView, useVideoPlayer } from "expo-video";
 import { LoadingState, StatePanel } from "../../components/ui";
 import { useProducts, Product } from "../../hooks/useApi";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
-import { formatPrice, getLowestTieredPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
+import { formatPrice, normalizePricingTiers, resolveListingMonthlyPrice } from "../../lib/ui";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -74,22 +76,37 @@ function FeedItem({
     isMuted: boolean;
     onToggleMute: () => void;
 }) {
-    const baseMonthlyPrice = toNumeric(item.monthly_price);
     const pricingTiers = normalizePricingTiers(item.pricing_tiers);
-    const lowestTieredPrice = getLowestTieredPrice(baseMonthlyPrice, pricingTiers);
-    const hasTieredDiscount =
-        item.pricing_mode === "tiered" &&
-        lowestTieredPrice < baseMonthlyPrice;
-    const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
+    const { listingMonthlyPrice, hasTieredDiscount } = resolveListingMonthlyPrice(
+        item.monthly_price,
+        item.pricing_mode,
+        pricingTiers,
+    );
 
     const [isPaused, setIsPaused] = useState(false);
     const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
+    const volumeIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handlePress = () => {
         onToggleMute();
         setShowVolumeIndicator(true);
-        setTimeout(() => setShowVolumeIndicator(false), 1500);
+
+        if (volumeIndicatorTimeoutRef.current) {
+            clearTimeout(volumeIndicatorTimeoutRef.current);
+        }
+        volumeIndicatorTimeoutRef.current = setTimeout(() => {
+            setShowVolumeIndicator(false);
+            volumeIndicatorTimeoutRef.current = null;
+        }, 1500);
     };
+
+    useEffect(() => {
+        return () => {
+            if (volumeIndicatorTimeoutRef.current) {
+                clearTimeout(volumeIndicatorTimeoutRef.current);
+            }
+        };
+    }, []);
 
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
@@ -220,23 +237,27 @@ export default function HomeFeedScreen() {
     const [feedData, setFeedData] = useState<Product[]>([]);
 
     useEffect(() => {
-        if (products && products.length > 0) {
-            // we initialize with 3 chunks: prev, current, next
-            setFeedData([...products, ...products, ...products]);
-            // Jump to the middle chunk on first mount
-            setTimeout(() => {
-                flatListRef.current?.scrollToOffset({
-                    offset: products.length * SCREEN_HEIGHT,
-                    animated: false,
-                });
-            }, 0);
+        if (!products || products.length === 0) return;
+
+        // we initialize with 3 chunks: prev, current, next
+        setFeedData([...products, ...products, ...products]);
+        // Jump to the middle chunk on first mount
+        const initialScrollTimeoutId = setTimeout(() => {
+            flatListRef.current?.scrollToOffset({
+                offset: products.length * SCREEN_HEIGHT,
+                animated: false,
+            });
+        }, 0);
+
+        return () => {
+            clearTimeout(initialScrollTimeoutId);
         }
     }, [products]);
 
     const handleScroll = useCallback(
-        (e: any) => {
+        (event: NativeSyntheticEvent<NativeScrollEvent>) => {
             if (!products || products.length === 0) return;
-            const offsetY = e.nativeEvent.contentOffset.y;
+            const offsetY = event.nativeEvent.contentOffset.y;
             const oneChunkHeight = products.length * SCREEN_HEIGHT;
 
             // If we scrolled past the middle chunk downwards, jump back 1 chunk

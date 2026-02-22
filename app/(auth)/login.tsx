@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { toErrorMessage } from "../../lib/ui";
 import { Button, Divider, Input } from "../../components/ui";
 
 export default function LoginScreen() {
@@ -26,8 +27,8 @@ export default function LoginScreen() {
 
             if (error) throw error;
             router.replace('/(tabs)');
-        } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+        } catch (error: unknown) {
+            Alert.alert('Login Failed', toErrorMessage(error, 'Unable to sign in right now.'));
         } finally {
             setLoading(false);
         }
@@ -43,8 +44,8 @@ export default function LoginScreen() {
             const { error } = await supabase.auth.resetPasswordForEmail(email);
             if (error) throw error;
             Alert.alert('Success', 'Password reset instructions sent to your email');
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
+        } catch (error: unknown) {
+            Alert.alert('Error', toErrorMessage(error, 'Unable to send reset instructions.'));
         }
     };
 

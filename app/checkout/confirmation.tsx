@@ -3,20 +3,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { AppTopBar, PriceSummaryRow, StatusPill } from "../../components/ui";
-import { formatCurrency, normalizeBillingStatus, toNumeric } from "../../lib/ui";
+import { formatCurrency, formatDateDisplay, formatPercentLabel, normalizeBillingStatus, toMoney } from "../../lib/ui";
 
 const DEFAULT_SST_RATE_PERCENT = 8;
-
-function formatDate(value: string | undefined) {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-MY", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
-}
 
 export default function OrderConfirmationScreen() {
     const {
@@ -43,23 +32,21 @@ export default function OrderConfirmationScreen() {
         endDate?: string;
     }>();
 
-    const monthlyTotalValue = toNumeric(monthlyTotal);
-    const providedSubtotalValue = toNumeric(subtotalAmount);
-    const providedSstAmountValue = toNumeric(sstAmount);
-    const requestedSstRatePercent = toNumeric(sstRatePercent);
+    const monthlyTotalValue = toMoney(monthlyTotal);
+    const providedSubtotalValue = toMoney(subtotalAmount);
+    const providedSstAmountValue = toMoney(sstAmount);
+    const requestedSstRatePercent = toMoney(sstRatePercent);
     const effectiveSstRatePercent = requestedSstRatePercent > 0 ? requestedSstRatePercent : DEFAULT_SST_RATE_PERCENT;
     const computedFallbackSubtotal =
         monthlyTotalValue > 0
-            ? Number((monthlyTotalValue / (1 + (effectiveSstRatePercent / 100))).toFixed(2))
+            ? toMoney(monthlyTotalValue / (1 + (effectiveSstRatePercent / 100)))
             : 0;
     const monthlySubtotalValue = providedSubtotalValue > 0 ? providedSubtotalValue : computedFallbackSubtotal;
     const monthlySstValue =
         providedSstAmountValue > 0
             ? providedSstAmountValue
-            : Number((monthlyTotalValue - monthlySubtotalValue).toFixed(2));
-    const sstRateLabel = Number.isInteger(effectiveSstRatePercent)
-        ? `${effectiveSstRatePercent.toFixed(0)}%`
-        : `${effectiveSstRatePercent.toFixed(2)}%`;
+            : toMoney(monthlyTotalValue - monthlySubtotalValue);
+    const sstRateLabel = formatPercentLabel(effectiveSstRatePercent);
     const orderCode = orderId ? `#${orderId.substring(0, 8).toUpperCase()}` : "—";
     const orderStatus = normalizeBillingStatus(status);
 
@@ -133,7 +120,7 @@ export default function OrderConfirmationScreen() {
                                     </View>
                                     <Text className="text-base text-gray-600 dark:text-gray-300">Start Date</Text>
                                 </View>
-                                <Text className="text-base font-semibold text-gray-900 dark:text-white">{formatDate(startDate)}</Text>
+                                <Text className="text-base font-semibold text-gray-900 dark:text-white">{formatDateDisplay(startDate)}</Text>
                             </View>
 
                             <View className="flex-row justify-between items-center">
@@ -143,7 +130,7 @@ export default function OrderConfirmationScreen() {
                                     </View>
                                     <Text className="text-base text-gray-600 dark:text-gray-300">End Date</Text>
                                 </View>
-                                <Text className="text-base font-semibold text-gray-900 dark:text-white">{formatDate(endDate)}</Text>
+                                <Text className="text-base font-semibold text-gray-900 dark:text-white">{formatDateDisplay(endDate)}</Text>
                             </View>
                         </View>
                     </View>

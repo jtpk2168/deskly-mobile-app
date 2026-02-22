@@ -17,14 +17,14 @@ export function SectionCard({
     icon,
     headerRight,
     children,
-    className,
-    contentClassName,
+    className = "",
+    contentClassName = "",
     ...props
 }: SectionCardProps) {
     const hasHeader = Boolean(title || subtitle || icon || headerRight);
 
     return (
-        <View className={`rounded-2xl border border-gray-100 bg-white p-5 ${className ?? ""}`} {...props}>
+        <View className={`rounded-2xl border border-gray-100 bg-white p-5 ${className}`} {...props}>
             {hasHeader ? (
                 <View className="mb-4 flex-row items-start justify-between">
                     <View className="flex-1 pr-3">

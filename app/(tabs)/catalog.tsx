@@ -7,7 +7,7 @@ import { Product, useProducts } from "../../hooks/useApi";
 import { AppTopBar, EmptyState, ErrorState, LoadingState } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
-import { formatPrice, getLowestTieredPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
+import { formatPrice, normalizePricingTiers, resolveListingMonthlyPrice } from "../../lib/ui";
 
 const categories = ["All", "Desks", "Chairs", "Storage", "Meeting", "Accessories"];
 
@@ -20,6 +20,22 @@ const styles = StyleSheet.create({
     },
 });
 
+function resolveProductPricing(product: Product) {
+    const pricingTiers = normalizePricingTiers(product.pricing_tiers);
+    const { baseMonthlyPrice, listingMonthlyPrice, hasTieredDiscount } = resolveListingMonthlyPrice(
+        product.monthly_price,
+        product.pricing_mode,
+        pricingTiers,
+    );
+
+    return {
+        pricingTiers,
+        baseMonthlyPrice,
+        listingMonthlyPrice,
+        hasTieredDiscount,
+    };
+}
+
 export default function CatalogScreen() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [query, setQuery] = useState("");
@@ -28,10 +44,12 @@ export default function CatalogScreen() {
 
     const { data: products, loading, error } = useProducts(activeCategory, query);
 
-    const handleAddToCart = (product: Product, monthlyPrice: number) => {
-        const baseMonthlyPrice = toNumeric(product.monthly_price);
-        const pricingTiers = normalizePricingTiers(product.pricing_tiers);
-
+    const handleAddToCart = (
+        product: Product,
+        monthlyPrice: number,
+        baseMonthlyPrice: number,
+        pricingTiers: ReturnType<typeof normalizePricingTiers>,
+    ) => {
         addToCart({
             productId: product.id,
             name: product.name,
@@ -99,13 +117,7 @@ export default function CatalogScreen() {
                 ) : (
                     <View className="flex-row flex-wrap justify-between px-5 pb-2">
                         {products.map((product) => {
-                            const baseMonthlyPrice = toNumeric(product.monthly_price);
-                            const pricingTiers = normalizePricingTiers(product.pricing_tiers);
-                            const lowestTieredPrice = getLowestTieredPrice(baseMonthlyPrice, pricingTiers);
-                            const hasTieredDiscount =
-                                product.pricing_mode === "tiered" &&
-                                lowestTieredPrice < baseMonthlyPrice;
-                            const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
+                            const { baseMonthlyPrice, listingMonthlyPrice, hasTieredDiscount, pricingTiers } = resolveProductPricing(product);
 
                             return (
                                 <View
@@ -137,7 +149,7 @@ export default function CatalogScreen() {
                                         </View>
                                         <TouchableOpacity
                                             className="h-9 w-9 items-center justify-center rounded-full bg-primary"
-                                            onPress={() => handleAddToCart(product, listingMonthlyPrice)}
+                                            onPress={() => handleAddToCart(product, listingMonthlyPrice, baseMonthlyPrice, pricingTiers)}
                                             accessibilityRole="button"
                                             accessibilityLabel={`Add ${product.name} to plan`}
                                         >

@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { toErrorMessage } from "../../lib/ui";
 import { Button, Divider, Input } from "../../components/ui";
 
 export default function SignupScreen() {
@@ -26,7 +27,7 @@ export default function SignupScreen() {
                 options: {
                     data: {
                         full_name: fullName,
-                        role: 'customer' // Explicitly set role
+                        role: 'customer'
                     },
                 },
             });
@@ -37,10 +38,10 @@ export default function SignupScreen() {
                 router.replace('/(tabs)');
             } else {
                 Alert.alert('Success', 'Please check your email for verification!');
-                router.back(); // Go back to login
+                router.back();
             }
-        } catch (error: any) {
-            Alert.alert('Signup Failed', error.message);
+        } catch (error: unknown) {
+            Alert.alert('Signup Failed', toErrorMessage(error, 'Unable to create account right now.'));
         } finally {
             setLoading(false);
         }

@@ -15,7 +15,7 @@ export function StickyActionBar({
     extraBottomPadding = 8,
     minBottomPadding = 14,
     bottomOffset = 0,
-    className,
+    className = "",
     style,
     ...props
 }: StickyActionBarProps) {
@@ -24,7 +24,7 @@ export function StickyActionBar({
 
     return (
         <View
-            className={`absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-5 ${className ?? ""}`}
+            className={`absolute bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-5 ${className}`}
             style={[{ paddingBottom, bottom: bottomOffset }, style]}
             {...props}
         >

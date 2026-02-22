@@ -31,7 +31,7 @@ export function ScreenShell({
     topBarContainerClassName,
     edges = ["top", "left", "right"],
     backgroundClassName = "bg-gray-50",
-    contentClassName,
+    contentClassName = "",
     scrollContentContainerStyle,
     stickyFooter,
     stickyFooterClassName,
@@ -58,7 +58,7 @@ export function ScreenShell({
                     <View className={contentClassName}>{children}</View>
                 </ScrollView>
             ) : (
-                <View className={`flex-1 ${contentClassName ?? ""}`}>{children}</View>
+                <View className={`flex-1 ${contentClassName}`}>{children}</View>
             )}
 
             {stickyFooter ? (

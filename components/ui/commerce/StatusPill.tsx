@@ -19,14 +19,14 @@ export function StatusPill({
     label,
     showDot = true,
     uppercase = true,
-    className,
+    className = "",
     ...props
 }: StatusPillProps) {
     const textLabel = label ?? formatBillingStatusLabel(status);
 
     return (
         <View
-            className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(status)} ${className ?? ""}`}
+            className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(status)} ${className}`}
             {...props}
         >
             {showDot ? (

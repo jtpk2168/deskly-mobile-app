@@ -15,7 +15,7 @@ import {
 } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useAuth } from "../../contexts/AuthContext";
-import { formatCurrency } from "../../lib/ui";
+import { formatCurrency, formatDateDisplay } from "../../lib/ui";
 
 export default function RentalsScreen() {
     const { user, isLoading: authLoading } = useAuth();
@@ -96,7 +96,7 @@ export default function RentalsScreen() {
                                     <View className="flex-1 rounded-xl border border-gray-100 bg-gray-50 p-3">
                                         <Text className="text-sm font-bold uppercase tracking-widest text-slate-400">Ends On</Text>
                                         <Text className="mt-1 text-base font-bold text-gray-900">
-                                            {sub.end_date ? new Date(sub.end_date).toLocaleDateString('en-MY', { month: 'short', year: 'numeric' }) : '—'}
+                                            {formatDateDisplay(sub.end_date, { options: { month: "short", year: "numeric" } })}
                                         </Text>
                                     </View>
                                 </View>

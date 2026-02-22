@@ -8,6 +8,7 @@
  * 4) Production fallback URL
  */
 import * as Linking from 'expo-linking';
+import { toErrorMessage } from './ui/text';
 
 const EXPLICIT_API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 const REQUEST_TIMEOUT_MS = 12000;
@@ -29,6 +30,16 @@ type ApiResponse<T> = {
     error: string | null;
     meta: { page?: number; limit?: number; total?: number } | null;
 };
+
+function toHeaderRecord(headers?: HeadersInit) {
+    const headerRecord: Record<string, string> = {};
+    if (!headers) return headerRecord;
+    const normalizedHeaders = new Headers(headers);
+    normalizedHeaders.forEach((value, key) => {
+        headerRecord[key] = value;
+    });
+    return headerRecord;
+}
 
 function resolveErrorMessage(status: number, rawBody: string) {
     const fallback = `Request failed (${status})`;
@@ -74,13 +85,13 @@ export async function fetchApi<T>(
         const { data: { session } } = await import('./supabase').then(m => m.supabase.auth.getSession());
         const token = session?.access_token;
 
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
-            ...(options?.headers || {}),
+            ...toHeaderRecord(options?.headers),
         };
 
         if (token) {
-            (headers as any)['Authorization'] = `Bearer ${token}`;
+            headers.Authorization = `Bearer ${token}`;
         }
 
         const url = `${API_BASE_URL}${endpoint}`;
@@ -112,9 +123,7 @@ export async function fetchApi<T>(
             data: null,
             error: err instanceof Error && err.name === 'AbortError'
                 ? timeoutMessage
-                : err instanceof Error
-                    ? err.message
-                    : 'Network request failed',
+                    : toErrorMessage(err, 'Network request failed'),
             meta: null,
         };
     } finally {

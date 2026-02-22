@@ -9,15 +9,15 @@ type LoadingStateProps = ViewProps & {
 
 export function LoadingState({
     label = "Loading...",
-    className,
-    labelClassName,
+    className = "",
+    labelClassName = "",
     indicatorColor = "#6B8599",
     ...props
 }: LoadingStateProps) {
     return (
-        <View className={`items-center justify-center py-20 ${className ?? ""}`} {...props}>
+        <View className={`items-center justify-center py-20 ${className}`} {...props}>
             <ActivityIndicator size="large" color={indicatorColor} />
-            <Text className={`mt-3 text-sm text-slate-400 ${labelClassName ?? ""}`}>{label}</Text>
+            <Text className={`mt-3 text-sm text-slate-400 ${labelClassName}`}>{label}</Text>
         </View>
     );
 }

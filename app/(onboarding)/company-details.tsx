@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppTopBar, Button, Checkbox, Input, StickyActionBar } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { upsertProfile, useProfile } from "../../hooks/useApi";
-import { getParamValue, toNull } from "../../lib/ui";
+import { collectMissingFieldLabels, getParamValue, toErrorMessage, toNull } from "../../lib/ui";
 
 function isDeliverySameAsOfficeAddress(company: {
     address: string | null;
@@ -262,9 +262,7 @@ export default function CompanyDetailsScreen() {
             { label: "Industry", value: industry },
             { label: "Team Size", value: teamSize },
         ];
-        const missingCompanyFields = requiredCompanyFields
-            .filter((field) => field.value.trim().length === 0)
-            .map((field) => field.label);
+        const missingCompanyFields = collectMissingFieldLabels(requiredCompanyFields);
 
         if (missingCompanyFields.length > 0) {
             Alert.alert("Missing Information", `Please complete all fields: ${missingCompanyFields.join(", ")}.`);
@@ -294,7 +292,7 @@ export default function CompanyDetailsScreen() {
 
             router.replace("/(tabs)/profile");
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to save profile";
+            const message = toErrorMessage(error, "Failed to save profile");
             Alert.alert("Profile Setup Failed", message);
         } finally {
             setSubmitting(false);

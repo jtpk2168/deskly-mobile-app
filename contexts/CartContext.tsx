@@ -1,13 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+    normalizePricingMode,
+    normalizePricingTiers as normalizeUiPricingTiers,
+    resolveTieredMonthlyPrice,
+    toMoney,
+    type PricingTier,
+} from '../lib/ui';
 
 const CART_STORAGE_KEY = 'deskly_cart_v1';
 const DEFAULT_CART_DURATION_MONTHS = 12;
-
-type PricingTier = {
-    min_months: number;
-    monthly_price: number;
-};
 
 export type CartItem = {
     id: string;
@@ -67,28 +69,23 @@ function normalizePositiveInteger(value: unknown, fallback: number) {
 }
 
 function normalizeMoney(value: unknown) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed < 0) return 0;
-    return Number(parsed.toFixed(2));
+    const normalized = toMoney(value, 0);
+    return normalized < 0 ? 0 : normalized;
 }
 
-function normalizePricingMode(value: unknown): 'fixed' | 'tiered' {
-    return value === 'tiered' ? 'tiered' : 'fixed';
-}
-
-function normalizePricingTiers(value: unknown): PricingTier[] {
+function parsePricingTiers(value: unknown): PricingTier[] {
     if (!Array.isArray(value)) return [];
 
-    return value
+    const parsed = value
         .map((tier) => {
             if (typeof tier !== 'object' || tier == null) return null;
             const minMonths = normalizePositiveInteger((tier as { min_months?: unknown }).min_months, 0);
             const monthlyPrice = normalizeMoney((tier as { monthly_price?: unknown }).monthly_price);
-            if (minMonths < 2 || monthlyPrice <= 0) return null;
             return { min_months: minMonths, monthly_price: monthlyPrice };
         })
-        .filter((tier): tier is PricingTier => tier != null)
-        .sort((a, b) => a.min_months - b.min_months);
+        .filter((tier): tier is PricingTier => tier != null);
+
+    return normalizeUiPricingTiers(parsed);
 }
 
 function resolveMonthlyPrice(
@@ -97,16 +94,9 @@ function resolveMonthlyPrice(
     pricingTiers: PricingTier[],
     durationMonths: number,
 ) {
-    if (pricingMode !== 'tiered' || pricingTiers.length === 0) {
-        return normalizeMoney(baseMonthlyPrice);
-    }
-
-    const matchingTier =
-        [...pricingTiers]
-            .sort((a, b) => b.min_months - a.min_months)
-            .find((tier) => durationMonths >= tier.min_months) ?? null;
-
-    return normalizeMoney(matchingTier?.monthly_price ?? baseMonthlyPrice);
+    return normalizeMoney(
+        resolveTieredMonthlyPrice(baseMonthlyPrice, pricingMode, pricingTiers, durationMonths),
+    );
 }
 
 function makeItemId(productId: string) {
@@ -141,7 +131,7 @@ function parseStoredCartItems(value: unknown) {
             const productId = item.productId.trim();
             const baseMonthlyPrice = normalizeMoney(item.baseMonthlyPrice ?? item.monthlyPrice);
             const pricingMode = normalizePricingMode(item.pricingMode);
-            const pricingTiers = normalizePricingTiers(item.pricingTiers);
+            const pricingTiers = parsePricingTiers(item.pricingTiers);
             const durationMonths = normalizePositiveInteger(item.durationMonths, DEFAULT_CART_DURATION_MONTHS);
 
             return {
@@ -264,7 +254,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const quantity = normalizePositiveInteger(payload.quantity, 1);
         const baseMonthlyPrice = normalizeMoney(payload.baseMonthlyPrice ?? payload.monthlyPrice);
         const pricingMode = normalizePricingMode(payload.pricingMode);
-        const pricingTiers = normalizePricingTiers(payload.pricingTiers);
+        const pricingTiers = parsePricingTiers(payload.pricingTiers);
 
         setItems((previous) => {
             const monthlyPrice = resolveMonthlyPrice(baseMonthlyPrice, pricingMode, pricingTiers, cartDurationMonths);
@@ -331,19 +321,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
 
     const monthlyTotal = useMemo(
-        () =>
-            Number(
-                items
-                    .reduce(
-                        (total, item) => (
-                            total
-                            + normalizeMoney(item.monthlyPrice)
-                            * normalizePositiveInteger(item.quantity, 1)
-                        ),
-                        0,
-                    )
-                    .toFixed(2),
+        () => toMoney(
+            items.reduce(
+                (total, item) => (
+                    total
+                    + normalizeMoney(item.monthlyPrice)
+                    * normalizePositiveInteger(item.quantity, 1)
+                ),
+                0,
             ),
+        ),
         [items],
     );
 

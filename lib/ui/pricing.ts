@@ -3,6 +3,8 @@ export type PricingTier = {
     monthly_price: number;
 };
 
+type PricingMode = "fixed" | "tiered";
+
 export function toNumeric(value: unknown, fallback = 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -28,6 +30,10 @@ export function normalizePricingTiers(input: PricingTier[] | null | undefined) {
                 && tier.monthly_price > 0
         )
         .sort((a, b) => a.min_months - b.min_months);
+}
+
+export function normalizePricingMode(value: unknown): PricingMode {
+    return value === "tiered" ? "tiered" : "fixed";
 }
 
 export function getLowestTieredPrice(baseMonthlyPrice: number, pricingTiers: PricingTier[]) {
@@ -58,4 +64,21 @@ export function resolveTieredMonthlyPrice(
             .find((tier) => durationMonths >= tier.min_months) ?? null;
 
     return toNumeric(matchedTier?.monthly_price ?? normalizedBase);
+}
+
+export function resolveListingMonthlyPrice(
+    baseMonthlyPrice: number,
+    pricingMode: "fixed" | "tiered" | string | null | undefined,
+    pricingTiers: PricingTier[],
+) {
+    const normalizedBase = toNumeric(baseMonthlyPrice);
+    const lowestTieredPrice = getLowestTieredPrice(normalizedBase, pricingTiers);
+    const hasTieredDiscount = pricingMode === "tiered" && lowestTieredPrice < normalizedBase;
+    const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : normalizedBase;
+
+    return {
+        baseMonthlyPrice: normalizedBase,
+        listingMonthlyPrice,
+        hasTieredDiscount,
+    };
 }

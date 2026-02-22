@@ -5,11 +5,11 @@ import { router } from "expo-router";
 import { AppTopBar, EmptyState, PriceSummaryRow, StickyActionBar } from "../../components/ui";
 import { useTabBarSpacing } from "../../lib/tabBarSpacing";
 import { useCart } from "../../contexts/CartContext";
-import { formatCurrency } from "../../lib/ui";
+import { calculateContractTotal, calculateSstBreakdown, formatCurrency, formatPercentLabel } from "../../lib/ui";
 
 const DURATION_OPTIONS = [12, 24];
 const SST_RATE = 0.08;
-const SST_RATE_PERCENT_LABEL = `${(SST_RATE * 100).toFixed(0)}%`;
+const SST_RATE_PERCENT_LABEL = formatPercentLabel(SST_RATE * 100);
 
 export default function PlanScreen() {
     const { contentPaddingBottom, floatingBottom } = useTabBarSpacing({ contentExtra: 140 });
@@ -25,12 +25,11 @@ export default function PlanScreen() {
     } = useCart();
 
     const checkoutDurationMonths = cartDurationMonths;
-    const contractTotal = items.reduce(
-        (total, item) => total + item.monthlyPrice * item.quantity * checkoutDurationMonths,
-        0,
+    const contractTotal = calculateContractTotal(
+        items.map((item) => ({ monthlyPrice: item.monthlyPrice, quantity: item.quantity })),
+        checkoutDurationMonths,
     );
-    const monthlySst = Number((monthlyTotal * SST_RATE).toFixed(2));
-    const monthlyTotalWithSst = Number((monthlyTotal + monthlySst).toFixed(2));
+    const { subtotal: monthlySubtotal, sstAmount: monthlySst, total: monthlyTotalWithSst } = calculateSstBreakdown(monthlyTotal, SST_RATE);
 
     const handleConfirmPlan = () => {
         if (itemCount === 0) return;
@@ -183,7 +182,7 @@ export default function PlanScreen() {
                         </View>
 
                         <View className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                            <PriceSummaryRow label="Monthly Subtotal" value={`${formatCurrency(monthlyTotal)} /mo`} valueTone="strong" />
+                            <PriceSummaryRow label="Monthly Subtotal" value={`${formatCurrency(monthlySubtotal)} /mo`} valueTone="strong" />
                         </View>
 
                         <View className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">

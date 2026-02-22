@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -24,31 +24,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
 
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            checkUserRole(session?.user);
-            setIsLoading(false);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            checkUserRole(session?.user);
-            setIsLoading(false);
-        });
-
-        return () => subscription.unsubscribe();
+    const applySession = useCallback((nextSession: Session | null) => {
+        const nextUser = nextSession?.user ?? null;
+        setSession(nextSession);
+        setUser(nextUser);
+        setIsAdmin(nextUser?.app_metadata?.role === 'admin');
+        setIsLoading(false);
     }, []);
 
-    const checkUserRole = (user: User | undefined | null) => {
-        if (user?.app_metadata?.role === 'admin') {
-            setIsAdmin(true);
-        } else {
-            setIsAdmin(false);
-        }
-    };
+    useEffect(() => {
+        let mounted = true;
+
+        const applyIfMounted = (nextSession: Session | null) => {
+            if (!mounted) return;
+            applySession(nextSession);
+        };
+
+        void supabase.auth.getSession()
+            .then(({ data: { session: nextSession } }) => {
+                applyIfMounted(nextSession);
+            })
+            .catch(() => {
+                if (mounted) setIsLoading(false);
+            });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            applyIfMounted(nextSession);
+        });
+
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
+    }, [applySession]);
 
     return (
         <AuthContext.Provider value={{ session, user, isLoading, isAdmin }}>

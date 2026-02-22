@@ -9,10 +9,32 @@ import { AppTopBar, Checkbox, PriceSummaryRow, StickyActionBar } from "../../com
 import { startBillingCheckout, useProfile, type Profile } from "../../hooks/useApi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
-import { formatCurrency, hasText, normalizeBillingStatus, toNumeric } from "../../lib/ui";
+import {
+    calculateSstBreakdown,
+    collectMissingFieldLabels,
+    formatCurrency,
+    formatPercentLabel,
+    hasText,
+    normalizeBillingStatus,
+    toErrorMessage,
+    toNumeric,
+} from "../../lib/ui";
 
 const SST_RATE = 0.08;
-const SST_RATE_PERCENT_LABEL = `${(SST_RATE * 100).toFixed(0)}%`;
+const SST_RATE_PERCENT_LABEL = formatPercentLabel(SST_RATE * 100);
+
+const COMPANY_PROFILE_FIELD_LABELS = [
+    "Company Legal Name",
+    "Registration Number",
+    "HQ Office Address",
+    "Office City",
+    "Office Zip / Postal",
+    "Delivery Address",
+    "Delivery City",
+    "Delivery Zip / Postal",
+    "Industry",
+    "Team Size",
+];
 
 const styles = StyleSheet.create({
     inputText: {
@@ -70,47 +92,36 @@ function readQueryParam(value: string | string[] | undefined) {
 }
 
 function getMissingProfileFields(profile: Profile | null, businessEmail?: string | null) {
-    const missing: string[] = [];
+    const missing = collectMissingFieldLabels([
+        { label: "Full Name", value: profile?.full_name },
+        { label: "Job Title", value: profile?.job_title },
+        { label: "Phone Number", value: profile?.phone_number },
+        { label: "Business Email", value: businessEmail ?? null },
+    ]);
     const company = profile?.company ?? null;
 
-    if (!hasText(profile?.full_name)) missing.push("Full Name");
-    if (!hasText(profile?.job_title)) missing.push("Job Title");
-    if (!hasText(profile?.phone_number)) missing.push("Phone Number");
-    if (!hasText(businessEmail)) missing.push("Business Email");
-
     if (!company) {
-        missing.push(
-            "Company Legal Name",
-            "Registration Number",
-            "HQ Office Address",
-            "Office City",
-            "Office Zip / Postal",
-            "Delivery Address",
-            "Delivery City",
-            "Delivery Zip / Postal",
-            "Industry",
-            "Team Size"
-        );
-        return missing;
+        return [...missing, ...COMPANY_PROFILE_FIELD_LABELS];
     }
-
-    if (!hasText(company.company_name)) missing.push("Company Legal Name");
-    if (!hasText(company.registration_number)) missing.push("Registration Number");
-    if (!hasText(company.address)) missing.push("HQ Office Address");
-    if (!hasText(company.office_city)) missing.push("Office City");
-    if (!hasText(company.office_zip_postal)) missing.push("Office Zip / Postal");
 
     const resolvedDeliveryAddress = hasText(company.delivery_address) ? company.delivery_address : company.address;
     const resolvedDeliveryCity = hasText(company.delivery_city) ? company.delivery_city : company.office_city;
     const resolvedDeliveryZipPostal = hasText(company.delivery_zip_postal) ? company.delivery_zip_postal : company.office_zip_postal;
-
-    if (!hasText(resolvedDeliveryAddress)) missing.push("Delivery Address");
-    if (!hasText(resolvedDeliveryCity)) missing.push("Delivery City");
-    if (!hasText(resolvedDeliveryZipPostal)) missing.push("Delivery Zip / Postal");
-    if (!hasText(company.industry)) missing.push("Industry");
-    if (!hasText(company.team_size)) missing.push("Team Size");
-
-    return missing;
+    return [
+        ...missing,
+        ...collectMissingFieldLabels([
+            { label: "Company Legal Name", value: company.company_name },
+            { label: "Registration Number", value: company.registration_number },
+            { label: "HQ Office Address", value: company.address },
+            { label: "Office City", value: company.office_city },
+            { label: "Office Zip / Postal", value: company.office_zip_postal },
+            { label: "Delivery Address", value: resolvedDeliveryAddress },
+            { label: "Delivery City", value: resolvedDeliveryCity },
+            { label: "Delivery Zip / Postal", value: resolvedDeliveryZipPostal },
+            { label: "Industry", value: company.industry },
+            { label: "Team Size", value: company.team_size },
+        ]),
+    ];
 }
 
 export default function DeliveryCheckoutScreen() {
@@ -147,9 +158,11 @@ export default function DeliveryCheckoutScreen() {
     const selectedDateIndex = Math.min(selectedDate, deliveryOptions.length - 1);
     const selectedDeliveryOption = deliveryOptions[selectedDateIndex];
     const monthlyTotalValue = toNumeric(monthlyTotal);
-    const monthlySubtotalValue = Number(monthlyTotalValue.toFixed(2));
-    const monthlySstValue = Number((monthlySubtotalValue * SST_RATE).toFixed(2));
-    const estimatedMonthlyTotalValue = Number((monthlySubtotalValue + monthlySstValue).toFixed(2));
+    const {
+        subtotal: monthlySubtotalValue,
+        sstAmount: monthlySstValue,
+        total: estimatedMonthlyTotalValue,
+    } = calculateSstBreakdown(monthlyTotalValue, SST_RATE);
     const isFromCartFlow = fromCart === "1" || fromCart === "true";
     const routeDurationMonths = (() => {
         const parsed = Number.parseInt(durationMonths ?? "", 10);
@@ -284,10 +297,7 @@ export default function DeliveryCheckoutScreen() {
             { label: "Full Name", value: fullName },
             { label: "Phone Number", value: phoneNumber },
         ];
-
-        const missingFields = requiredFields
-            .filter((field) => field.value.trim().length === 0)
-            .map((field) => field.label);
+        const missingFields = collectMissingFieldLabels(requiredFields);
 
         if (missingFields.length > 0) {
             const message = `Please complete all required fields: ${missingFields.join(", ")}.`;
@@ -426,7 +436,7 @@ export default function DeliveryCheckoutScreen() {
                 params: confirmationParams,
             });
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to create order";
+            const message = toErrorMessage(error, "Failed to create order");
             if (
                 message.includes("Previous checkout attempt failed") ||
                 message.includes("idempotency key was already used")

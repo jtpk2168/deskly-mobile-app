@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
 
 export function Input({ label, icon, error, className, style, ...props }: InputProps) {
     return (
-        <View className={className}>
+        <View className={className ?? ""}>
             {label ? <Text className="mb-2 ml-1 text-base font-medium text-slate-600">{label}</Text> : null}
             <View className="relative">
                 {icon && (

@@ -170,6 +170,19 @@ export type UpsertProfilePayload = {
     } | null;
 };
 
+type ApiResult<T> = {
+    data: T | null;
+    error: string | null;
+};
+
+function requireApiData<T>(result: ApiResult<T>, fallback: string) {
+    if (result.error || result.data == null) {
+        throw new Error(result.error || fallback);
+    }
+
+    return result.data;
+}
+
 // ─── Generic hook ─────────────────────────────────────────
 
 function useApiQuery<T>(endpoint: string, enabled = true) {
@@ -192,7 +205,7 @@ function useApiQuery<T>(endpoint: string, enabled = true) {
 
     useEffect(() => {
         if (enabled) {
-            fetchData();
+            void fetchData();
         } else {
             setData(null);
             setError(null);
@@ -238,11 +251,7 @@ export async function createSubscription(payload: CreateSubscriptionPayload) {
         body: JSON.stringify(payload),
     });
 
-    if (result.error || !result.data) {
-        throw new Error(result.error || 'Failed to create subscription');
-    }
-
-    return result.data;
+    return requireApiData(result, 'Failed to create subscription');
 }
 
 export async function startBillingCheckout(payload: CreateSubscriptionPayload) {
@@ -251,11 +260,7 @@ export async function startBillingCheckout(payload: CreateSubscriptionPayload) {
         body: JSON.stringify(payload),
     });
 
-    if (result.error || !result.data) {
-        throw new Error(result.error || 'Failed to start billing checkout');
-    }
-
-    return result.data;
+    return requireApiData(result, 'Failed to start billing checkout');
 }
 
 export async function upsertProfile(payload: UpsertProfilePayload) {
@@ -264,9 +269,5 @@ export async function upsertProfile(payload: UpsertProfilePayload) {
         body: JSON.stringify(payload),
     });
 
-    if (result.error || !result.data) {
-        throw new Error(result.error || 'Failed to save profile');
-    }
-
-    return result.data;
+    return requireApiData(result, 'Failed to save profile');
 }

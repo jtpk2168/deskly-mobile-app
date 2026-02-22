@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useProduct } from "../../hooks/useApi";
 import { AppTopBar, ErrorState, LoadingState, StickyActionBar } from "../../components/ui";
 import { useCart } from "../../contexts/CartContext";
-import { formatPrice, normalizePricingTiers, toNumeric } from "../../lib/ui";
+import { formatPrice, normalizePricingTiers, resolveTieredMonthlyPrice, toNumeric } from "../../lib/ui";
 
 export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,10 +36,12 @@ export default function ProductDetailsScreen() {
     const hasTieredPricing =
         product.pricing_mode === "tiered" &&
         pricingTiers.length > 0;
-    const applicableTier = hasTieredPricing
-        ? [...pricingTiers].reverse().find((tier) => cartDurationMonths >= tier.min_months) ?? null
-        : null;
-    const effectiveMonthlyPrice = applicableTier ? applicableTier.monthly_price : baseMonthlyPrice;
+    const effectiveMonthlyPrice = resolveTieredMonthlyPrice(
+        baseMonthlyPrice,
+        product.pricing_mode,
+        pricingTiers,
+        cartDurationMonths,
+    );
     const totalPrice = effectiveMonthlyPrice * cartDurationMonths;
     const hasDiscount = effectiveMonthlyPrice < baseMonthlyPrice;
 

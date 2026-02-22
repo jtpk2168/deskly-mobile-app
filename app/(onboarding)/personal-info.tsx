@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppTopBar, Button, Input, StickyActionBar } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
-import { getParamValue } from "../../lib/ui";
+import { collectMissingFieldLabels, getParamValue } from "../../lib/ui";
 
 export default function PersonalInfoScreen() {
     const { user } = useAuth();
@@ -53,7 +53,14 @@ export default function PersonalInfoScreen() {
             return;
         }
 
-        if (!fullName.trim() || !jobTitle.trim() || !phoneNumber.trim() || !businessEmail.trim()) {
+        const missingPersonalFields = collectMissingFieldLabels([
+            { label: "Full Name", value: fullName },
+            { label: "Job Title", value: jobTitle },
+            { label: "Phone Number", value: phoneNumber },
+            { label: "Business Email", value: businessEmail },
+        ]);
+
+        if (missingPersonalFields.length > 0) {
             Alert.alert("Missing Information", "Please complete all fields before continuing.");
             return;
         }

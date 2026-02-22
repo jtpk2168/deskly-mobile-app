@@ -19,11 +19,12 @@ export function Button({ variant = "primary", label, loading, className, ...prop
         secondary: "text-text-light font-medium text-base",
         outline: "text-primary font-medium text-base",
     };
+    const isDisabled = Boolean(loading || props.disabled);
 
     return (
         <TouchableOpacity
-            className={`${baseStyles} ${variants[variant]} ${className} ${props.disabled ? "opacity-50" : ""}`}
-            disabled={loading || props.disabled}
+            className={`${baseStyles} ${variants[variant]} ${className ?? ""} ${isDisabled ? "opacity-50" : ""}`}
+            disabled={isDisabled}
             {...props}
         >
             {loading ? (
