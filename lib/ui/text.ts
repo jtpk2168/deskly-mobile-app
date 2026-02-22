@@ -7,6 +7,12 @@ export function toErrorMessage(error: unknown, fallback: string) {
     return fallback;
 }
 
+export function isValidEmail(value: string | null | undefined) {
+    if (!hasText(value)) return false;
+    const normalized = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+}
+
 type DateDisplayOptions = {
     locale?: string;
     fallback?: string;

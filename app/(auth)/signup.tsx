@@ -4,29 +4,40 @@ import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { toErrorMessage } from "../../lib/ui";
+import { isValidEmail, toErrorMessage } from "../../lib/ui";
 import { Button, Divider, Input } from "../../components/ui";
 
 export default function SignupScreen() {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const normalizedEmail = email.trim();
+    const normalizedFullName = fullName.trim();
+    const emailError =
+        normalizedEmail.length > 0 && !isValidEmail(normalizedEmail)
+            ? "Please enter a valid email address."
+            : undefined;
 
     const handleSignup = async () => {
-        if (!email || !password || !fullName) {
+        if (!normalizedEmail || !password || !normalizedFullName) {
             Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+        if (!isValidEmail(normalizedEmail)) {
+            Alert.alert('Invalid Email', 'Please enter a valid email address.');
             return;
         }
 
         setLoading(true);
         try {
             const { data, error } = await supabase.auth.signUp({
-                email,
+                email: normalizedEmail,
                 password,
                 options: {
                     data: {
-                        full_name: fullName,
+                        full_name: normalizedFullName,
                         role: 'customer'
                     },
                 },
@@ -88,6 +99,7 @@ export default function SignupScreen() {
                                 icon="mail-outline"
                                 value={email}
                                 onChangeText={setEmail}
+                                error={emailError}
                             />
 
                             <View className="mt-4">
@@ -95,9 +107,12 @@ export default function SignupScreen() {
                                     label="Password"
                                     placeholder="••••••••"
                                     icon="lock-outline"
-                                    secureTextEntry
+                                    secureTextEntry={!showPassword}
                                     value={password}
                                     onChangeText={setPassword}
+                                    rightIcon={showPassword ? "visibility-off" : "visibility"}
+                                    rightIconAccessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                                    onRightIconPress={() => setShowPassword((previous) => !previous)}
                                 />
                             </View>
 
