@@ -81,6 +81,13 @@ function readQueryParam(value: string | string[] | undefined) {
     return value ?? null;
 }
 
+function normalizeBillingStatus(value: string | null | undefined) {
+    const normalized = (value ?? "pending_payment").trim().toLowerCase();
+    if (!normalized) return "pending_payment";
+    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
+    return normalized;
+}
+
 function getMissingProfileFields(profile: Profile | null, businessEmail?: string | null) {
     const missing: string[] = [];
     const company = profile?.company ?? null;
@@ -129,7 +136,7 @@ export default function DeliveryCheckoutScreen() {
     const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { data: profile, loading: profileLoading } = useProfile(user?.id);
-    const { items: cartItems, clearCart } = useCart();
+    const { items: cartItems, cartDurationMonths, clearCart } = useCart();
     const {
         productName,
         monthlyTotal,
@@ -163,13 +170,14 @@ export default function DeliveryCheckoutScreen() {
     const monthlySubtotalValue = Number(monthlyTotalValue.toFixed(2));
     const monthlySstValue = Number((monthlySubtotalValue * SST_RATE).toFixed(2));
     const estimatedMonthlyTotalValue = Number((monthlySubtotalValue + monthlySstValue).toFixed(2));
-    const rentalDurationMonths = (() => {
+    const isFromCartFlow = fromCart === "1" || fromCart === "true";
+    const routeDurationMonths = (() => {
         const parsed = Number.parseInt(durationMonths ?? "", 10);
         if (!Number.isInteger(parsed) || parsed <= 0) return 12;
         return parsed;
     })();
+    const rentalDurationMonths = isFromCartFlow ? cartDurationMonths : routeDurationMonths;
     const minimumTermMonths = Math.max(12, rentalDurationMonths);
-    const isFromCartFlow = fromCart === "1" || fromCart === "true";
     const missingProfileFields = useMemo(
         () => getMissingProfileFields(profile, user?.email ?? null),
         [profile, user?.email]
@@ -210,9 +218,9 @@ export default function DeliveryCheckoutScreen() {
             productId: item.productId,
             quantity: item.quantity,
             monthlyPrice: item.monthlyPrice,
-            durationMonths: item.durationMonths,
+            durationMonths: cartDurationMonths,
         }))),
-        [cartItems]
+        [cartDurationMonths, cartItems]
     );
 
     useEffect(() => {
@@ -345,7 +353,7 @@ export default function DeliveryCheckoutScreen() {
                     product_name: item.name,
                     category: item.category ?? null,
                     monthly_price: item.monthlyPrice,
-                    duration_months: item.durationMonths,
+                    duration_months: minimumTermMonths,
                     quantity: item.quantity,
                 }))
                 : [{
@@ -383,7 +391,7 @@ export default function DeliveryCheckoutScreen() {
                 subtotalAmount: String(checkout.tax_quote.subtotal),
                 sstAmount: String(checkout.tax_quote.sst_amount),
                 sstRatePercent: String(Number((checkout.tax_quote.sst_rate * 100).toFixed(2))),
-                status: created.status ?? "pending",
+                status: normalizeBillingStatus(created.status),
                 durationMonths: String(minimumTermMonths),
                 startDate: created.start_date ?? startDate,
                 endDate: created.end_date ?? endDate,
@@ -670,6 +678,9 @@ export default function DeliveryCheckoutScreen() {
                 <View className="mb-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                     <View>
                         <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">Monthly Billing Estimate</Text>
+                        <Text className="mt-1 text-xs text-slate-500">
+                            One order = one duration. For different durations, place a separate order.
+                        </Text>
                         <View className="mt-2 gap-1.5">
                             <View className="flex-row items-center justify-between">
                                 <Text className="text-sm text-slate-500">Subtotal</Text>

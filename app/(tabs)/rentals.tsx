@@ -21,6 +21,40 @@ function formatStatusLabel(status: string) {
         .join(" ");
 }
 
+function normalizeBillingStatus(value: string | null | undefined) {
+    const normalized = (value ?? "pending_payment").trim().toLowerCase();
+    if (!normalized) return "pending_payment";
+    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
+    return normalized;
+}
+
+function statusBadgeClassName(status: string) {
+    if (status === "active") return "bg-green-100";
+    if (status === "pending_payment") return "bg-amber-100";
+    if (status === "payment_failed") return "bg-rose-100";
+    if (status === "cancelled") return "bg-red-100";
+    if (status === "completed") return "bg-blue-100";
+    return "bg-gray-100";
+}
+
+function statusDotClassName(status: string) {
+    if (status === "active") return "bg-green-500";
+    if (status === "pending_payment") return "bg-amber-500";
+    if (status === "payment_failed") return "bg-rose-500";
+    if (status === "cancelled") return "bg-red-500";
+    if (status === "completed") return "bg-blue-500";
+    return "bg-gray-400";
+}
+
+function statusTextClassName(status: string) {
+    if (status === "active") return "text-green-700";
+    if (status === "pending_payment") return "text-amber-700";
+    if (status === "payment_failed") return "text-rose-700";
+    if (status === "cancelled") return "text-red-700";
+    if (status === "completed") return "text-blue-700";
+    return "text-gray-500";
+}
+
 export default function RentalsScreen() {
     const { user, isLoading: authLoading } = useAuth();
     const { contentPaddingBottom } = useTabBarSpacing();
@@ -89,40 +123,26 @@ export default function RentalsScreen() {
                     </View>
                 ) : (
                     <>
-                        {subscriptions.map((sub) => (
-                            <TouchableOpacity
-                                key={sub.id}
-                                activeOpacity={0.9}
-                                className="relative mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5"
-                                onPress={() =>
-                                    router.push({
-                                        pathname: '/rentals/[id]',
-                                        params: { id: sub.id },
-                                    })
-                                }
-                            >
+                        {subscriptions.map((sub) => {
+                            const normalizedStatus = normalizeBillingStatus(sub.status);
+                            return (
+                                <TouchableOpacity
+                                    key={sub.id}
+                                    activeOpacity={0.9}
+                                    className="relative mb-4 overflow-hidden rounded-2xl border border-gray-100 bg-white p-5"
+                                    onPress={() =>
+                                        router.push({
+                                            pathname: '/rentals/[id]',
+                                            params: { id: sub.id },
+                                        })
+                                    }
+                                >
                                 <View className="absolute right-5 top-5 flex-row items-center">
-                                    <View className={`flex-row items-center rounded-full px-2 py-0.5 ${sub.status === 'active' ? 'bg-green-100' :
-                                            sub.status === 'pending' ? 'bg-yellow-100' :
-                                                sub.status === 'pending_payment' ? 'bg-amber-100' :
-                                                    sub.status === 'payment_failed' ? 'bg-rose-100' :
-                                                        sub.status === 'incomplete' ? 'bg-orange-100' :
-                                                            'bg-gray-100'
-                                        }`}>
-                                        <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${sub.status === 'active' ? 'bg-green-500' :
-                                                sub.status === 'pending' ? 'bg-yellow-500' :
-                                                    sub.status === 'pending_payment' ? 'bg-amber-500' :
-                                                        sub.status === 'payment_failed' ? 'bg-rose-500' :
-                                                            sub.status === 'incomplete' ? 'bg-orange-500' :
-                                                                'bg-gray-400'
-                                            }`} />
-                                        <Text className={`text-xs font-bold uppercase ${sub.status === 'active' ? 'text-green-700' :
-                                                sub.status === 'pending' ? 'text-yellow-700' :
-                                                    sub.status === 'pending_payment' ? 'text-amber-700' :
-                                                        sub.status === 'payment_failed' ? 'text-rose-700' :
-                                                            sub.status === 'incomplete' ? 'text-orange-700' :
-                                                                'text-gray-500'
-                                            }`}>{formatStatusLabel(sub.status)}</Text>
+                                    <View className={`flex-row items-center rounded-full px-2 py-0.5 ${statusBadgeClassName(normalizedStatus)}`}>
+                                        <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(normalizedStatus)}`} />
+                                        <Text className={`text-xs font-bold uppercase ${statusTextClassName(normalizedStatus)}`}>
+                                            {formatStatusLabel(normalizedStatus)}
+                                        </Text>
                                     </View>
                                     <MaterialIcons name="chevron-right" size={18} color="#94A3B8" style={{ marginLeft: 6 }} />
                                 </View>
@@ -150,8 +170,9 @@ export default function RentalsScreen() {
                                         </Text>
                                     </View>
                                 </View>
-                            </TouchableOpacity>
-                        ))}
+                                </TouchableOpacity>
+                            );
+                        })}
                     </>
                 )}
 

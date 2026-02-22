@@ -2,6 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const CART_STORAGE_KEY = 'deskly_cart_v1';
+const DEFAULT_CART_DURATION_MONTHS = 12;
+
+type PricingTier = {
+    min_months: number;
+    monthly_price: number;
+};
 
 export type CartItem = {
     id: string;
@@ -11,10 +17,7 @@ export type CartItem = {
     imageUrl: string | null;
     baseMonthlyPrice: number;
     pricingMode: 'fixed' | 'tiered';
-    pricingTiers: {
-        min_months: number;
-        monthly_price: number;
-    }[];
+    pricingTiers: PricingTier[];
     monthlyPrice: number;
     durationMonths: number;
     quantity: number;
@@ -27,10 +30,7 @@ export type AddToCartPayload = {
     imageUrl?: string | null;
     baseMonthlyPrice?: number;
     pricingMode?: 'fixed' | 'tiered';
-    pricingTiers?: {
-        min_months: number;
-        monthly_price: number;
-    }[];
+    pricingTiers?: PricingTier[];
     monthlyPrice?: number;
     durationMonths?: number;
     quantity?: number;
@@ -40,10 +40,11 @@ type CartContextType = {
     items: CartItem[];
     itemCount: number;
     monthlyTotal: number;
+    cartDurationMonths: number;
     addToCart: (payload: AddToCartPayload) => void;
     removeFromCart: (itemId: string) => void;
     updateQuantity: (itemId: string, quantity: number) => void;
-    updateDuration: (itemId: string, durationMonths: number) => void;
+    setCartDuration: (durationMonths: number) => void;
     clearCart: () => void;
 };
 
@@ -51,10 +52,11 @@ const CartContext = createContext<CartContextType>({
     items: [],
     itemCount: 0,
     monthlyTotal: 0,
+    cartDurationMonths: DEFAULT_CART_DURATION_MONTHS,
     addToCart: () => undefined,
     removeFromCart: () => undefined,
     updateQuantity: () => undefined,
-    updateDuration: () => undefined,
+    setCartDuration: () => undefined,
     clearCart: () => undefined,
 });
 
@@ -74,9 +76,7 @@ function normalizePricingMode(value: unknown): 'fixed' | 'tiered' {
     return value === 'tiered' ? 'tiered' : 'fixed';
 }
 
-function normalizePricingTiers(
-    value: unknown
-): { min_months: number; monthly_price: number }[] {
+function normalizePricingTiers(value: unknown): PricingTier[] {
     if (!Array.isArray(value)) return [];
 
     return value
@@ -87,15 +87,15 @@ function normalizePricingTiers(
             if (minMonths < 2 || monthlyPrice <= 0) return null;
             return { min_months: minMonths, monthly_price: monthlyPrice };
         })
-        .filter((tier): tier is { min_months: number; monthly_price: number } => tier != null)
+        .filter((tier): tier is PricingTier => tier != null)
         .sort((a, b) => a.min_months - b.min_months);
 }
 
 function resolveMonthlyPrice(
     baseMonthlyPrice: number,
     pricingMode: 'fixed' | 'tiered',
-    pricingTiers: { min_months: number; monthly_price: number }[],
-    durationMonths: number
+    pricingTiers: PricingTier[],
+    durationMonths: number,
 ) {
     if (pricingMode !== 'tiered' || pricingTiers.length === 0) {
         return normalizeMoney(baseMonthlyPrice);
@@ -109,14 +109,112 @@ function resolveMonthlyPrice(
     return normalizeMoney(matchingTier?.monthly_price ?? baseMonthlyPrice);
 }
 
-function makeItemId(productId: string, durationMonths: number) {
-    return `${productId}:${durationMonths}`;
+function makeItemId(productId: string) {
+    return productId;
+}
+
+type RawCartItem = {
+    id?: unknown;
+    productId?: unknown;
+    name?: unknown;
+    category?: unknown;
+    imageUrl?: unknown;
+    baseMonthlyPrice?: unknown;
+    pricingMode?: unknown;
+    pricingTiers?: unknown;
+    monthlyPrice?: unknown;
+    durationMonths?: unknown;
+    quantity?: unknown;
+};
+
+function parseStoredCartItems(value: unknown) {
+    if (!Array.isArray(value)) return [] as CartItem[];
+
+    return value
+        .map((rawItem) => {
+            if (typeof rawItem !== 'object' || rawItem == null) return null;
+            const item = rawItem as RawCartItem;
+            if (typeof item.productId !== 'string' || item.productId.trim().length === 0) {
+                return null;
+            }
+
+            const productId = item.productId.trim();
+            const baseMonthlyPrice = normalizeMoney(item.baseMonthlyPrice ?? item.monthlyPrice);
+            const pricingMode = normalizePricingMode(item.pricingMode);
+            const pricingTiers = normalizePricingTiers(item.pricingTiers);
+            const durationMonths = normalizePositiveInteger(item.durationMonths, DEFAULT_CART_DURATION_MONTHS);
+
+            return {
+                id: makeItemId(productId),
+                productId,
+                name: String(item.name ?? 'Furniture'),
+                category: typeof item.category === 'string' ? item.category : null,
+                imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
+                baseMonthlyPrice,
+                pricingMode,
+                pricingTiers,
+                monthlyPrice: resolveMonthlyPrice(baseMonthlyPrice, pricingMode, pricingTiers, durationMonths),
+                durationMonths,
+                quantity: normalizePositiveInteger(item.quantity, 1),
+            } satisfies CartItem;
+        })
+        .filter((item): item is CartItem => item != null);
+}
+
+function inferDurationFromItems(items: CartItem[]) {
+    if (items.length === 0) return DEFAULT_CART_DURATION_MONTHS;
+    return items.reduce(
+        (maxDuration, item) => Math.max(maxDuration, normalizePositiveInteger(item.durationMonths, DEFAULT_CART_DURATION_MONTHS)),
+        DEFAULT_CART_DURATION_MONTHS,
+    );
+}
+
+function normalizeItemsForDuration(items: CartItem[], durationMonths: number) {
+    const normalizedDuration = normalizePositiveInteger(durationMonths, DEFAULT_CART_DURATION_MONTHS);
+    const mergedByProduct = new Map<string, CartItem>();
+
+    for (const item of items) {
+        const key = makeItemId(item.productId);
+        const monthlyPrice = resolveMonthlyPrice(
+            item.baseMonthlyPrice,
+            item.pricingMode,
+            item.pricingTiers,
+            normalizedDuration,
+        );
+
+        const existing = mergedByProduct.get(key);
+        if (existing) {
+            mergedByProduct.set(key, {
+                ...existing,
+                baseMonthlyPrice: item.baseMonthlyPrice,
+                pricingMode: item.pricingMode,
+                pricingTiers: item.pricingTiers,
+                monthlyPrice,
+                durationMonths: normalizedDuration,
+                quantity:
+                    normalizePositiveInteger(existing.quantity, 1)
+                    + normalizePositiveInteger(item.quantity, 1),
+            });
+            continue;
+        }
+
+        mergedByProduct.set(key, {
+            ...item,
+            id: key,
+            durationMonths: normalizedDuration,
+            monthlyPrice,
+            quantity: normalizePositiveInteger(item.quantity, 1),
+        });
+    }
+
+    return Array.from(mergedByProduct.values());
 }
 
 export const useCart = () => useContext(CartContext);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
     const [items, setItems] = useState<CartItem[]>([]);
+    const [cartDurationMonths, setCartDurationMonths] = useState(DEFAULT_CART_DURATION_MONTHS);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
@@ -125,36 +223,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(CART_STORAGE_KEY)
             .then((value) => {
                 if (!mounted || !value) return;
-                const parsed = JSON.parse(value) as CartItem[];
-                if (!Array.isArray(parsed)) return;
-                setItems(
-                    parsed
-                        .filter((item) => typeof item?.id === 'string' && typeof item?.productId === 'string')
-                        .map((item) => ({
-                            id: String(item.id),
-                            productId: String(item.productId),
-                            name: String(item.name ?? 'Furniture'),
-                            category: item.category ?? null,
-                            imageUrl: item.imageUrl ?? null,
-                            baseMonthlyPrice: normalizeMoney(
-                                (item as { baseMonthlyPrice?: unknown }).baseMonthlyPrice ?? item.monthlyPrice
-                            ),
-                            pricingMode: normalizePricingMode((item as { pricingMode?: unknown }).pricingMode),
-                            pricingTiers: normalizePricingTiers((item as { pricingTiers?: unknown }).pricingTiers),
-                            durationMonths: normalizePositiveInteger(item.durationMonths, 12),
-                            quantity: normalizePositiveInteger(item.quantity, 1),
-                            monthlyPrice: 0,
-                        }))
-                        .map((item) => ({
-                            ...item,
-                            monthlyPrice: resolveMonthlyPrice(
-                                item.baseMonthlyPrice,
-                                item.pricingMode,
-                                item.pricingTiers,
-                                item.durationMonths
-                            ),
-                        }))
-                );
+
+                const parsed = JSON.parse(value) as unknown;
+                const parsedItems = Array.isArray(parsed)
+                    ? parseStoredCartItems(parsed)
+                    : parseStoredCartItems((parsed as { items?: unknown })?.items);
+
+                const parsedDuration = Array.isArray(parsed)
+                    ? null
+                    : normalizePositiveInteger(
+                        (parsed as { cartDurationMonths?: unknown })?.cartDurationMonths,
+                        inferDurationFromItems(parsedItems),
+                    );
+
+                const resolvedDuration = parsedDuration ?? inferDurationFromItems(parsedItems);
+                const normalizedItems = normalizeItemsForDuration(parsedItems, resolvedDuration);
+
+                setCartDurationMonths(resolvedDuration);
+                setItems(normalizedItems);
             })
             .catch(() => undefined)
             .finally(() => {
@@ -168,19 +254,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!loaded) return;
-        AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items)).catch(() => undefined);
-    }, [items, loaded]);
+        AsyncStorage.setItem(
+            CART_STORAGE_KEY,
+            JSON.stringify({ items, cartDurationMonths }),
+        ).catch(() => undefined);
+    }, [items, cartDurationMonths, loaded]);
 
     const addToCart = useCallback((payload: AddToCartPayload) => {
-        const durationMonths = normalizePositiveInteger(payload.durationMonths, 12);
         const quantity = normalizePositiveInteger(payload.quantity, 1);
         const baseMonthlyPrice = normalizeMoney(payload.baseMonthlyPrice ?? payload.monthlyPrice);
         const pricingMode = normalizePricingMode(payload.pricingMode);
         const pricingTiers = normalizePricingTiers(payload.pricingTiers);
-        const monthlyPrice = resolveMonthlyPrice(baseMonthlyPrice, pricingMode, pricingTiers, durationMonths);
-        const itemId = makeItemId(payload.productId, durationMonths);
 
         setItems((previous) => {
+            const monthlyPrice = resolveMonthlyPrice(baseMonthlyPrice, pricingMode, pricingTiers, cartDurationMonths);
+            const itemId = makeItemId(payload.productId);
             const index = previous.findIndex((item) => item.id === itemId);
             if (index >= 0) {
                 const next = [...previous];
@@ -192,6 +280,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                     pricingMode,
                     pricingTiers,
                     monthlyPrice,
+                    durationMonths: cartDurationMonths,
                 };
                 return next;
             }
@@ -208,12 +297,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                     pricingMode,
                     pricingTiers,
                     monthlyPrice,
-                    durationMonths,
+                    durationMonths: cartDurationMonths,
                     quantity,
                 },
             ];
         });
-    }, []);
+    }, [cartDurationMonths]);
 
     const removeFromCart = useCallback((itemId: string) => {
         setItems((previous) => previous.filter((item) => item.id !== itemId));
@@ -222,62 +311,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const updateQuantity = useCallback((itemId: string, quantity: number) => {
         const normalized = normalizePositiveInteger(quantity, 1);
         setItems((previous) =>
-            previous.map((item) => (item.id === itemId ? { ...item, quantity: normalized } : item))
+            previous.map((item) => (item.id === itemId ? { ...item, quantity: normalized } : item)),
         );
     }, []);
 
-    const updateDuration = useCallback((itemId: string, durationMonths: number) => {
-        const normalizedDuration = normalizePositiveInteger(durationMonths, 12);
-
-        setItems((previous) => {
-            const sourceIndex = previous.findIndex((item) => item.id === itemId);
-            if (sourceIndex < 0) return previous;
-
-            const sourceItem = previous[sourceIndex];
-            const nextId = makeItemId(sourceItem.productId, normalizedDuration);
-            const nextMonthlyPrice = resolveMonthlyPrice(
-                sourceItem.baseMonthlyPrice,
-                sourceItem.pricingMode,
-                sourceItem.pricingTiers,
-                normalizedDuration
-            );
-
-            if (nextId === itemId) {
-                const next = [...previous];
-                next[sourceIndex] = {
-                    ...sourceItem,
-                    durationMonths: normalizedDuration,
-                    monthlyPrice: nextMonthlyPrice,
-                };
-                return next;
-            }
-
-            const targetIndex = previous.findIndex((item) => item.id === nextId);
-            if (targetIndex >= 0) {
-                const targetItem = previous[targetIndex];
-                const mergedItem: CartItem = {
-                    ...targetItem,
-                    id: nextId,
-                    durationMonths: normalizedDuration,
-                    baseMonthlyPrice: sourceItem.baseMonthlyPrice,
-                    pricingMode: sourceItem.pricingMode,
-                    pricingTiers: sourceItem.pricingTiers,
-                    monthlyPrice: nextMonthlyPrice,
-                    quantity: targetItem.quantity + sourceItem.quantity,
-                };
-
-                return previous.filter((_, index) => index !== sourceIndex && index !== targetIndex).concat(mergedItem);
-            }
-
-            const next = [...previous];
-            next[sourceIndex] = {
-                ...sourceItem,
-                id: nextId,
-                durationMonths: normalizedDuration,
-                monthlyPrice: nextMonthlyPrice,
-            };
-            return next;
-        });
+    const setCartDuration = useCallback((durationMonths: number) => {
+        const normalizedDuration = normalizePositiveInteger(durationMonths, DEFAULT_CART_DURATION_MONTHS);
+        setCartDurationMonths(normalizedDuration);
+        setItems((previous) => normalizeItemsForDuration(previous, normalizedDuration));
     }, []);
 
     const clearCart = useCallback(() => {
@@ -286,17 +327,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const itemCount = useMemo(
         () => items.reduce((total, item) => total + normalizePositiveInteger(item.quantity, 1), 0),
-        [items]
+        [items],
     );
 
     const monthlyTotal = useMemo(
         () =>
             Number(
                 items
-                    .reduce((total, item) => total + normalizeMoney(item.monthlyPrice) * normalizePositiveInteger(item.quantity, 1), 0)
-                    .toFixed(2)
+                    .reduce(
+                        (total, item) => (
+                            total
+                            + normalizeMoney(item.monthlyPrice)
+                            * normalizePositiveInteger(item.quantity, 1)
+                        ),
+                        0,
+                    )
+                    .toFixed(2),
             ),
-        [items]
+        [items],
     );
 
     const value = useMemo<CartContextType>(
@@ -304,13 +352,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             items,
             itemCount,
             monthlyTotal,
+            cartDurationMonths,
             addToCart,
             removeFromCart,
             updateQuantity,
-            updateDuration,
+            setCartDuration,
             clearCart,
         }),
-        [addToCart, clearCart, itemCount, items, monthlyTotal, removeFromCart, updateDuration, updateQuantity]
+        [
+            addToCart,
+            cartDurationMonths,
+            clearCart,
+            itemCount,
+            items,
+            monthlyTotal,
+            removeFromCart,
+            setCartDuration,
+            updateQuantity,
+        ],
     );
 
     return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

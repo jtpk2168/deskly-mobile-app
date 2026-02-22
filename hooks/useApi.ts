@@ -62,7 +62,7 @@ export type Profile = {
 export type Subscription = {
     id: string;
     user_id: string;
-    status: 'active' | 'pending' | 'pending_payment' | 'payment_failed' | 'incomplete' | 'cancelled' | 'completed' | string;
+    status: 'active' | 'pending_payment' | 'payment_failed' | 'cancelled' | 'completed' | string;
     bundle_id: string | null;
     start_date: string | null;
     end_date: string | null;

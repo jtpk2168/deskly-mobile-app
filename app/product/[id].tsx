@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -6,8 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useProduct } from "../../hooks/useApi";
 import { AppTopBar } from "../../components/ui/AppTopBar";
 import { useCart } from "../../contexts/CartContext";
-
-const DURATION_OPTIONS = [12, 24];
 
 function toNumeric(value: unknown) {
     const parsed = Number(value);
@@ -31,8 +28,7 @@ function normalizePricingTiers(input: { min_months: number; monthly_price: numbe
 
 export default function ProductDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const [selectedDuration, setSelectedDuration] = useState(12);
-    const { addToCart } = useCart();
+    const { addToCart, cartDurationMonths } = useCart();
 
     const { data: product, loading, error } = useProduct(id);
 
@@ -63,10 +59,10 @@ export default function ProductDetailsScreen() {
         product.pricing_mode === "tiered" &&
         pricingTiers.length > 0;
     const applicableTier = hasTieredPricing
-        ? [...pricingTiers].reverse().find((tier) => selectedDuration >= tier.min_months) ?? null
+        ? [...pricingTiers].reverse().find((tier) => cartDurationMonths >= tier.min_months) ?? null
         : null;
     const effectiveMonthlyPrice = applicableTier ? applicableTier.monthly_price : baseMonthlyPrice;
-    const totalPrice = effectiveMonthlyPrice * selectedDuration;
+    const totalPrice = effectiveMonthlyPrice * cartDurationMonths;
     const hasDiscount = effectiveMonthlyPrice < baseMonthlyPrice;
 
     const handleAddToPlan = () => {
@@ -79,7 +75,6 @@ export default function ProductDetailsScreen() {
             pricingMode: product.pricing_mode,
             pricingTiers,
             monthlyPrice: effectiveMonthlyPrice,
-            durationMonths: selectedDuration,
             quantity: 1,
         });
     };
@@ -149,30 +144,15 @@ export default function ProductDetailsScreen() {
                         )}
                     </View>
 
-                    <View className="mb-8">
-                        <Text className="mb-3 ml-1 text-sm font-medium text-slate-500">Rental Duration</Text>
-                        <View className="flex-row rounded-xl border border-gray-100 bg-gray-50 p-1">
-                            {DURATION_OPTIONS.map((duration) => {
-                                const selected = selectedDuration === duration;
-                                return (
-                                    <TouchableOpacity
-                                        key={duration}
-                                        className={`flex-1 rounded-lg py-3 ${selected ? "bg-primary" : "bg-transparent"}`}
-                                        onPress={() => setSelectedDuration(duration)}
-                                    >
-                                        <Text className={`text-center text-sm font-semibold ${selected ? "text-white" : "text-slate-500"}`}>
-                                            {duration} Months
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                        <Text className="mt-3 text-center text-sm text-slate-400">
-                            Includes maintenance and professional installation.
+                    <View className="mb-8 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                        <Text className="text-xs font-semibold uppercase tracking-wider text-slate-400">Order Duration</Text>
+                        <Text className="mt-2 text-base font-semibold text-gray-900">{cartDurationMonths} months</Text>
+                        <Text className="mt-2 text-sm text-slate-500">
+                            Duration is controlled at cart level. One order = one duration. For different durations, place a separate order.
                         </Text>
                         {hasTieredPricing && (
-                            <Text className="mt-1 text-center text-sm text-primary">
-                                Tiered pricing auto-applies based on selected rental duration.
+                            <Text className="mt-2 text-sm text-primary">
+                                Tiered pricing auto-applies based on your cart duration.
                             </Text>
                         )}
                     </View>
@@ -204,7 +184,7 @@ export default function ProductDetailsScreen() {
                         <Text className="text-sm font-medium uppercase text-slate-400">Monthly</Text>
                         <Text className="text-2xl font-bold text-gray-900">RM {formatPrice(effectiveMonthlyPrice)}</Text>
                         <Text className="mt-2 text-sm font-medium uppercase text-slate-400">
-                            Total ({selectedDuration} months)
+                            Total ({cartDurationMonths} months)
                         </Text>
                         <Text className="text-xl font-bold text-gray-900">RM {formatPrice(totalPrice)}</Text>
                     </View>

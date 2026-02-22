@@ -36,36 +36,40 @@ function formatStatusLabel(status: string) {
         .join(" ");
 }
 
+function normalizeBillingStatus(value: string | null | undefined) {
+    const normalized = (value ?? "pending_payment").trim().toLowerCase();
+    if (!normalized) return "pending_payment";
+    if (normalized === "pending" || normalized === "incomplete") return "pending_payment";
+    return normalized;
+}
+
 function statusBadgeClassName(status: string) {
-    if (status === "active") return "bg-green-100";
-    if (status === "pending") return "bg-yellow-100";
-    if (status === "pending_payment") return "bg-amber-100";
-    if (status === "payment_failed") return "bg-rose-100";
-    if (status === "incomplete") return "bg-orange-100";
-    if (status === "cancelled") return "bg-red-100";
-    if (status === "completed") return "bg-blue-100";
+    const normalizedStatus = normalizeBillingStatus(status);
+    if (normalizedStatus === "active") return "bg-green-100";
+    if (normalizedStatus === "pending_payment") return "bg-amber-100";
+    if (normalizedStatus === "payment_failed") return "bg-rose-100";
+    if (normalizedStatus === "cancelled") return "bg-red-100";
+    if (normalizedStatus === "completed") return "bg-blue-100";
     return "bg-gray-100";
 }
 
 function statusTextClassName(status: string) {
-    if (status === "active") return "text-green-700";
-    if (status === "pending") return "text-yellow-700";
-    if (status === "pending_payment") return "text-amber-700";
-    if (status === "payment_failed") return "text-rose-700";
-    if (status === "incomplete") return "text-orange-700";
-    if (status === "cancelled") return "text-red-700";
-    if (status === "completed") return "text-blue-700";
+    const normalizedStatus = normalizeBillingStatus(status);
+    if (normalizedStatus === "active") return "text-green-700";
+    if (normalizedStatus === "pending_payment") return "text-amber-700";
+    if (normalizedStatus === "payment_failed") return "text-rose-700";
+    if (normalizedStatus === "cancelled") return "text-red-700";
+    if (normalizedStatus === "completed") return "text-blue-700";
     return "text-gray-600";
 }
 
 function statusDotClassName(status: string) {
-    if (status === "active") return "bg-green-500";
-    if (status === "pending") return "bg-yellow-500";
-    if (status === "pending_payment") return "bg-amber-500";
-    if (status === "payment_failed") return "bg-rose-500";
-    if (status === "incomplete") return "bg-orange-500";
-    if (status === "cancelled") return "bg-red-500";
-    if (status === "completed") return "bg-blue-500";
+    const normalizedStatus = normalizeBillingStatus(status);
+    if (normalizedStatus === "active") return "bg-green-500";
+    if (normalizedStatus === "pending_payment") return "bg-amber-500";
+    if (normalizedStatus === "payment_failed") return "bg-rose-500";
+    if (normalizedStatus === "cancelled") return "bg-red-500";
+    if (normalizedStatus === "completed") return "bg-blue-500";
     return "bg-gray-400";
 }
 
@@ -162,6 +166,7 @@ export default function RentalOrderDetailsScreen() {
     const sstRateLabel = Number.isInteger(computedSstRatePercent)
         ? `${computedSstRatePercent.toFixed(0)}%`
         : `${computedSstRatePercent.toFixed(2)}%`;
+    const subscriptionStatus = normalizeBillingStatus(subscription?.status);
 
     const handleOpenInvoice = async (url: string | null) => {
         if (!url) {
@@ -221,10 +226,10 @@ export default function RentalOrderDetailsScreen() {
                                     ID: #{subscription.id.substring(0, 8).toUpperCase()}
                                 </Text>
                             </View>
-                            <View className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(subscription.status)}`}>
-                                <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(subscription.status)}`} />
-                                <Text className={`text-sm font-semibold uppercase ${statusTextClassName(subscription.status)}`}>
-                                    {formatStatusLabel(subscription.status)}
+                            <View className={`flex-row items-center rounded-full px-2 py-1 ${statusBadgeClassName(subscriptionStatus)}`}>
+                                <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${statusDotClassName(subscriptionStatus)}`} />
+                                <Text className={`text-sm font-semibold uppercase ${statusTextClassName(subscriptionStatus)}`}>
+                                    {formatStatusLabel(subscriptionStatus)}
                                 </Text>
                             </View>
                         </View>
@@ -242,7 +247,7 @@ export default function RentalOrderDetailsScreen() {
                             <DetailRow label={`Tax (SST ${sstRateLabel})`} value={formatCurrency(resolvedTax)} />
                             <DetailRow label="Monthly Total" value={formatCurrency(monthlyTotal)} />
                             <DetailRow label="Items in Order" value={String(totalItemCount)} />
-                            <DetailRow label="Order Status" value={formatStatusLabel(subscription.status)} />
+                            <DetailRow label="Order Status" value={formatStatusLabel(subscriptionStatus)} />
                             <DetailRow label="Start Date" value={formatDate(subscription.start_date)} />
                             <DetailRow label="Commitment End" value={formatDate(subscription.end_date)} />
                             <DetailRow label="Created On" value={formatDate(subscription.created_at)} />

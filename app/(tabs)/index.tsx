@@ -6,8 +6,10 @@ import {
     Image,
     Text,
     TouchableOpacity,
+    Pressable,
     View,
     ViewToken,
+    Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -39,20 +41,26 @@ function normalizePricingTiers(input: { min_months: number; monthly_price: numbe
         .sort((a, b) => a.min_months - b.min_months);
 }
 
-function FeedVideo({ uri, isActive }: { uri: string; isActive: boolean }) {
+function FeedVideo({ uri, isActive, isMuted, isPaused }: { uri: string; isActive: boolean; isMuted: boolean; isPaused: boolean }) {
     const player = useVideoPlayer({ uri }, (player) => {
         player.loop = true;
-        player.muted = true;
+        player.muted = isMuted;
     });
 
     useEffect(() => {
-        if (isActive) {
+        if (player) {
+            player.muted = isMuted;
+        }
+    }, [isMuted, player]);
+
+    useEffect(() => {
+        if (isActive && !isPaused) {
             player.play();
             return;
         }
 
         player.pause();
-    }, [isActive, player]);
+    }, [isActive, isPaused, player]);
 
     return (
         <VideoView
@@ -73,6 +81,8 @@ function FeedItem({
     index,
     total,
     isActive,
+    isMuted,
+    onToggleMute,
 }: {
     item: Product;
     tabBarHeight: number;
@@ -80,6 +90,8 @@ function FeedItem({
     index: number;
     total: number;
     isActive: boolean;
+    isMuted: boolean;
+    onToggleMute: () => void;
 }) {
     const baseMonthlyPrice = toNumeric(item.monthly_price);
     const pricingTiers = normalizePricingTiers(item.pricing_tiers);
@@ -92,10 +104,19 @@ function FeedItem({
         lowestTieredPrice < baseMonthlyPrice;
     const listingMonthlyPrice = hasTieredDiscount ? lowestTieredPrice : baseMonthlyPrice;
 
+    const [isPaused, setIsPaused] = useState(false);
+    const [showVolumeIndicator, setShowVolumeIndicator] = useState(false);
+
+    const handlePress = () => {
+        onToggleMute();
+        setShowVolumeIndicator(true);
+        setTimeout(() => setShowVolumeIndicator(false), 1500);
+    };
+
     return (
         <View style={{ height: SCREEN_HEIGHT }} className="relative bg-black">
             {item.video_url ? (
-                <FeedVideo uri={item.video_url} isActive={isActive} />
+                <FeedVideo uri={item.video_url} isActive={isActive} isMuted={isMuted} isPaused={isPaused} />
             ) : item.image_url ? (
                 <Image
                     source={{ uri: item.image_url }}
@@ -108,12 +129,33 @@ function FeedItem({
                 </View>
             )}
 
-            {/* Bottom gradient overlay */}
-            <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.88)"]}
-                locations={[0.35, 0.55, 1]}
+            <Pressable
                 style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                onPress={handlePress}
+                onLongPress={() => setIsPaused(true)}
+                onPressOut={() => setIsPaused(false)}
             />
+
+            {showVolumeIndicator && (
+                <View className="absolute left-1/2 top-1/2 -mt-8 -ml-8 h-16 w-16 items-center justify-center rounded-full bg-black/50">
+                    <MaterialIcons name={isMuted ? "volume-off" : "volume-up"} size={32} color="white" />
+                </View>
+            )}
+
+            {isPaused && (
+                <View className="absolute left-1/2 top-1/2 -mt-8 -ml-8 h-16 w-16 items-center justify-center rounded-full bg-black/50">
+                    <MaterialIcons name="pause" size={32} color="white" />
+                </View>
+            )}
+
+            {/* Bottom gradient overlay */}
+            <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+                <LinearGradient
+                    colors={["transparent", "rgba(0,0,0,0.25)", "rgba(0,0,0,0.88)"]}
+                    locations={[0.35, 0.55, 1]}
+                    style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+            </View>
 
             {/* Content overlay */}
             <View
@@ -182,7 +224,7 @@ function FeedItem({
             >
                 <MaterialIcons name="swipe-vertical" size={14} color="rgba(255,255,255,0.7)" />
                 <Text className="ml-1.5 text-sm font-semibold text-white/80">
-                    {index + 1} / {total}
+                    {(index % total) + 1} / {total}
                 </Text>
             </View>
         </View>
@@ -190,11 +232,56 @@ function FeedItem({
 }
 
 export default function HomeFeedScreen() {
+    const flatListRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
     const { tabBarHeight } = useTabBarSpacing();
     const [activeIndex, setActiveIndex] = useState(0);
+    const [isMuted, setIsMuted] = useState(true);
 
     const { data: products, loading, error } = useProducts();
+    const [feedData, setFeedData] = useState<Product[]>([]);
+
+    useEffect(() => {
+        if (products && products.length > 0) {
+            // we initialize with 3 chunks: prev, current, next
+            setFeedData([...products, ...products, ...products]);
+            // Jump to the middle chunk on first mount
+            setTimeout(() => {
+                flatListRef.current?.scrollToOffset({
+                    offset: products.length * SCREEN_HEIGHT,
+                    animated: false,
+                });
+            }, 0);
+        }
+    }, [products]);
+
+    const handleScroll = useCallback(
+        (e: any) => {
+            if (!products || products.length === 0) return;
+            const offsetY = e.nativeEvent.contentOffset.y;
+            const oneChunkHeight = products.length * SCREEN_HEIGHT;
+
+            // If we scrolled past the middle chunk downwards, jump back 1 chunk
+            if (offsetY >= oneChunkHeight * 2) {
+                flatListRef.current?.scrollToOffset({
+                    offset: offsetY - oneChunkHeight,
+                    animated: false,
+                });
+            }
+            // If we scroll into the first chunk upwards, jump forward 1 chunk
+            else if (offsetY <= oneChunkHeight - SCREEN_HEIGHT) {
+                flatListRef.current?.scrollToOffset({
+                    offset: offsetY + oneChunkHeight,
+                    animated: false,
+                });
+            }
+        },
+        [products]
+    );
+
+    const toggleMute = useCallback(() => {
+        setIsMuted((muted) => !muted);
+    }, []);
 
     const onViewableItemsChanged = useRef(
         ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -215,9 +302,11 @@ export default function HomeFeedScreen() {
                 index={index}
                 total={products?.length ?? 0}
                 isActive={index === activeIndex}
+                isMuted={isMuted}
+                onToggleMute={toggleMute}
             />
         ),
-        [tabBarHeight, insets.top, products?.length, activeIndex]
+        [tabBarHeight, insets.top, products?.length, activeIndex, isMuted, toggleMute]
     );
 
     if (loading) {
@@ -244,13 +333,18 @@ export default function HomeFeedScreen() {
     return (
         <View className="flex-1 bg-black">
             <FlatList
-                data={products}
+                ref={flatListRef}
+                data={feedData}
                 renderItem={renderItem}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
                 snapToInterval={SCREEN_HEIGHT}
-                decelerationRate="fast"
+                snapToAlignment="start"
+                decelerationRate={Platform.OS === 'ios' ? 'normal' : 'fast'}
+                disableIntervalMomentum={true}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 getItemLayout={(_, index) => ({

@@ -60,7 +60,6 @@ export default function CatalogScreen() {
             pricingMode: product.pricing_mode,
             pricingTiers,
             monthlyPrice,
-            durationMonths: 12,
             quantity: 1,
         });
     };

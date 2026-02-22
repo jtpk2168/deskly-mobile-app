@@ -20,15 +20,17 @@ export default function PlanScreen() {
         items,
         itemCount,
         monthlyTotal,
+        cartDurationMonths,
+        setCartDuration,
         updateQuantity,
-        updateDuration,
         removeFromCart,
         clearCart,
     } = useCart();
-    const checkoutDurationMonths = items.length > 0 ? Math.max(...items.map((item) => item.durationMonths)) : 12;
+
+    const checkoutDurationMonths = cartDurationMonths;
     const contractTotal = items.reduce(
-        (total, item) => total + item.monthlyPrice * item.quantity * item.durationMonths,
-        0
+        (total, item) => total + item.monthlyPrice * item.quantity * checkoutDurationMonths,
+        0,
     );
     const monthlySst = Number((monthlyTotal * SST_RATE).toFixed(2));
     const monthlyTotalWithSst = Number((monthlyTotal + monthlySst).toFixed(2));
@@ -69,85 +71,92 @@ export default function PlanScreen() {
                         </TouchableOpacity>
                     </View>
                 ) : (
-                    <View className="space-y-3">
-                        {items.map((item) => (
-                            <View key={item.id} className="rounded-2xl border border-gray-100 bg-white p-4">
-                                <View className="flex-row items-start">
-                                    <View className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100">
-                                        {item.imageUrl ? (
-                                            <Image source={{ uri: item.imageUrl }} className="h-full w-full" resizeMode="cover" />
-                                        ) : (
-                                            <View className="h-full w-full items-center justify-center">
-                                                <MaterialIcons name="event-seat" size={26} color="#94A3B8" />
-                                            </View>
-                                        )}
-                                    </View>
-                                    <View className="ml-3 flex-1">
-                                        <Text className="text-base font-bold text-gray-900" numberOfLines={1}>
-                                            {item.name}
-                                        </Text>
-                                        <Text className="mt-1 text-sm text-slate-400">{item.category ?? "Furniture"}</Text>
-                                        <Text className="mt-2 text-sm font-semibold text-primary">
-                                            {formatCurrency(item.monthlyPrice)} /mo
-                                        </Text>
-                                        <Text className="mt-1 text-xs uppercase tracking-wide text-slate-400">{item.durationMonths} months</Text>
-                                    </View>
-                                    <TouchableOpacity
-                                        onPress={() => removeFromCart(item.id)}
-                                        className="rounded-full p-2"
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Remove ${item.name}`}
-                                    >
-                                        <MaterialIcons name="delete-outline" size={20} color="#94A3B8" />
-                                    </TouchableOpacity>
-                                </View>
-
-                                <View className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-                                    <View className="mb-2 flex-row items-center justify-between">
-                                        <Text className="text-xs uppercase tracking-wider text-slate-400">Rental Duration</Text>
-                                        <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
-                                            {item.durationMonths} months
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row gap-2">
-                                        {DURATION_OPTIONS.map((months) => {
-                                            const selected = item.durationMonths === months;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={`${item.id}-${months}`}
-                                                    className={`flex-1 items-center rounded-lg py-2 ${selected ? "bg-primary" : "bg-white"}`}
-                                                    onPress={() => updateDuration(item.id, months)}
-                                                >
-                                                    <Text className={`text-sm font-bold ${selected ? "text-white" : "text-slate-500"}`}>
-                                                        {months}M
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-
-                                <View className="mt-4 flex-row items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-                                    <Text className="text-xs uppercase tracking-wider text-slate-400">Quantity</Text>
-                                    <View className="flex-row items-center">
-                                        <TouchableOpacity
-                                            className="h-8 w-8 items-center justify-center rounded-full bg-white"
-                                            onPress={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                        >
-                                            <MaterialIcons name="remove" size={16} color="#6B8599" />
-                                        </TouchableOpacity>
-                                        <Text className="mx-3 text-sm font-bold text-gray-900">{item.quantity}</Text>
-                                        <TouchableOpacity
-                                            className="h-8 w-8 items-center justify-center rounded-full bg-white"
-                                            onPress={() => updateQuantity(item.id, item.quantity + 1)}
-                                        >
-                                            <MaterialIcons name="add" size={16} color="#6B8599" />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
+                    <>
+                        <View className="mb-3 rounded-2xl border border-gray-100 bg-white p-4">
+                            <View className="mb-2 flex-row items-center justify-between">
+                                <Text className="text-xs uppercase tracking-wider text-slate-400">Order Duration</Text>
+                                <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                                    {checkoutDurationMonths} months
+                                </Text>
                             </View>
-                        ))}
-                    </View>
+                            <View className="flex-row gap-2">
+                                {DURATION_OPTIONS.map((months) => {
+                                    const selected = checkoutDurationMonths === months;
+                                    return (
+                                        <TouchableOpacity
+                                            key={months}
+                                            className={`flex-1 items-center rounded-lg py-2 ${selected ? "bg-primary" : "bg-gray-50"}`}
+                                            onPress={() => setCartDuration(months)}
+                                        >
+                                            <Text className={`text-sm font-bold ${selected ? "text-white" : "text-slate-500"}`}>
+                                                {months}M
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            <Text className="mt-3 text-xs text-slate-500">
+                                One order = one duration. For different durations, place a separate order.
+                            </Text>
+                        </View>
+
+                        <View className="space-y-3">
+                            {items.map((item) => (
+                                <View key={item.id} className="rounded-2xl border border-gray-100 bg-white p-4">
+                                    <View className="flex-row items-start">
+                                        <View className="h-16 w-16 overflow-hidden rounded-xl bg-gray-100">
+                                            {item.imageUrl ? (
+                                                <Image source={{ uri: item.imageUrl }} className="h-full w-full" resizeMode="cover" />
+                                            ) : (
+                                                <View className="h-full w-full items-center justify-center">
+                                                    <MaterialIcons name="event-seat" size={26} color="#94A3B8" />
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View className="ml-3 flex-1">
+                                            <Text className="text-base font-bold text-gray-900" numberOfLines={1}>
+                                                {item.name}
+                                            </Text>
+                                            <Text className="mt-1 text-sm text-slate-400">{item.category ?? "Furniture"}</Text>
+                                            <Text className="mt-2 text-sm font-semibold text-primary">
+                                                {formatCurrency(item.monthlyPrice)} /mo
+                                            </Text>
+                                            <Text className="mt-1 text-xs uppercase tracking-wide text-slate-400">
+                                                {checkoutDurationMonths} months
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => removeFromCart(item.id)}
+                                            className="rounded-full p-2"
+                                            accessibilityRole="button"
+                                            accessibilityLabel={`Remove ${item.name}`}
+                                        >
+                                            <MaterialIcons name="delete-outline" size={20} color="#94A3B8" />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View className="mt-4 flex-row items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                                        <Text className="text-xs uppercase tracking-wider text-slate-400">Quantity</Text>
+                                        <View className="flex-row items-center">
+                                            <TouchableOpacity
+                                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                                                onPress={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                            >
+                                                <MaterialIcons name="remove" size={16} color="#6B8599" />
+                                            </TouchableOpacity>
+                                            <Text className="mx-3 text-sm font-bold text-gray-900">{item.quantity}</Text>
+                                            <TouchableOpacity
+                                                className="h-8 w-8 items-center justify-center rounded-full bg-white"
+                                                onPress={() => updateQuantity(item.id, item.quantity + 1)}
+                                            >
+                                                <MaterialIcons name="add" size={16} color="#6B8599" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    </>
                 )}
 
                 {items.length > 0 && (
@@ -156,7 +165,7 @@ export default function PlanScreen() {
                             <Text className="text-sm font-semibold text-gray-900">Plan Summary</Text>
                         </View>
                         <Text className="mt-1 text-sm text-slate-600">
-                            Monthly billing is calculated from each item&apos;s selected duration and pricing.
+                            Monthly billing uses one shared duration for all items in this order.
                         </Text>
 
                         <View className="mt-4 space-y-2">
@@ -171,7 +180,7 @@ export default function PlanScreen() {
                                                     {item.quantity} x {formatCurrency(item.monthlyPrice)} /mo
                                                 </Text>
                                                 <Text className="mt-1 text-xs uppercase tracking-wide text-slate-500">
-                                                    {item.durationMonths} months
+                                                    {checkoutDurationMonths} months
                                                 </Text>
                                             </View>
                                             <View className="items-end">
@@ -215,7 +224,6 @@ export default function PlanScreen() {
                 )}
             </ScrollView>
 
-            {/* Bottom CTA */}
             <View
                 className="absolute left-0 right-0 border-t border-gray-100 bg-white/95 px-6 py-5"
                 style={{ bottom: floatingBottom }}
